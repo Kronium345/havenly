@@ -14,13 +14,17 @@ npx tsc --noEmit            # type check
 npx expo-doctor             # diagnose dependency and config issues
 npx expo install --fix      # fix incompatible package versions
 npx eas-cli@latest <cmd>    # EAS builds, submits, and updates (use instead of bare `eas`)
+# Sanity Studio lives in studio/ with its own package.json (use npm there, not expo install)
+cd studio && npm run dev                          # Studio at localhost:3333
+cd studio && npx sanity schemas deploy            # after schema changes (then npx sanity deploy)
+cd studio && npx sanity datasets embeddings status production
 ~~~
 
 ## Expo
 
 - Expo ships breaking changes every SDK release, so don't trust memory. Before touching an Expo, EAS, or React Native API, check the `expo` major version in `package.json` and read `https://docs.expo.dev/versions/v<major>.0.0/`. For anything else, start from https://docs.expo.dev/llms.txt and follow its links.
 - Routes live in `src/app/`: every file is a screen and `_layout.tsx` files define navigators. API routes are `src/app/api/*+api.ts`. Keep components, hooks, and utils outside `src/app/`. Route files stay thin and render a screen from `src/screens/<screen>/`, where screen-only components live. Shared ones go in `src/components/ui/`.
-- Route groups: `(auth)` (onboarding, sign-up, sign-in, verify-email) and `(app)` (home, profile). The root layout gates them with `Stack.Protected` on Clerk's `useAuth().isSignedIn` (`!isSignedIn` / `!!isSignedIn`; undefined while loading keeps `(app)` closed), and `/` waits for `isLoaded`, then redirects to `/home` or `/onboarding`. Signing in or out needs no `router` call: `finalize()`/`signOut()` flips the guard and the index redirect moves the guest. On native the splash waits for fonts and Clerk (Clerk at most 5s). `src/app/sso-callback.tsx` catches the Google/Apple return link. `GestureHandlerRootView` wraps the root layout (Gesture Handler v3 hooks API: `useFlingGesture`, `GestureDetector`).
+- Route groups: `(auth)` (onboarding, sign-up, sign-in, verify-email) and `(app)`. `(app)` is a Stack holding `(tabs)` (home, search, trips, profile: expo-router JS tabs from `expo-router/js-tabs` with our `AppTabBar`; tab screens stay mounted, so switching is instant and keeps state) plus `stay/[slug]`, `stay/[slug]/policies` and `stay/[slug]/book`, pushed over the tabs. Tab screens pad their bottom by `APP_TAB_BAR_HEIGHT`. `(app)/_layout.tsx` provides `BookingsProvider` and `SavedStaysProvider`. The root layout gates them with `Stack.Protected` on Clerk's `useAuth().isSignedIn` (`!isSignedIn` / `!!isSignedIn`; undefined while loading keeps `(app)` closed), and `/` waits for `isLoaded`, then redirects to `/home` or `/onboarding`. Signing in or out needs no `router` call: `finalize()`/`signOut()` flips the guard and the index redirect moves the guest. On native the splash waits for fonts and Clerk (Clerk at most 5s). `src/app/sso-callback.tsx` catches the Google/Apple return link. `GestureHandlerRootView` wraps the root layout (Gesture Handler v3 hooks API: `useFlingGesture`, `GestureDetector`).
 - Never put personal data (emails, names) in route params: on web they land in browser history. Pass them in memory.
 - `ios/` and `android/` are generated. Never create or edit them by hand; configure native behavior in `app.json` and config plugins.
 - Expo Go only includes its bundled native modules. After adding a library with native code, switch to a development build (`npx expo run:ios`).
@@ -36,12 +40,18 @@ Each tool has one job. Ask before moving a responsibility to a different tool.
   - Sign-up sends Full name as Clerk first/last name and verifies the email with a 6-digit code on `/verify-email`. Sign-in uses the password; when Clerk returns `needs_client_trust`/`needs_second_factor` it emails a code and opens `/verify-email?flow=sign-in`. The email shown there comes from Clerk's attempt, never the URL. Sign-up screens render `<View nativeID="clerk-captcha" />`.
   - Google/Apple use experimental `useSSO()` from `@clerk/expo/experimental` (browser flow, works in Expo Go, activates the session itself). On web the buttons show an info toast. Native sheets need a development build.
   - Sessions persist through `tokenCache` (`expo-secure-store`). Password minimum is 8 in both Clerk and `validate.ts`; keep them equal. Read names with `displayFirstName` from `src/lib/display-name.ts`. Sign out lives on `/profile`.
-- **Content:** Sanity (properties, hosts, policies, house rules). Studio is a standalone app in `studio/`. Schema deploys and content changes go through the Sanity MCP, and generated property copy uses Agent Actions.
+- **Content:** Sanity project `wutkash1`, public dataset `production` (published content readable without a token; the app uses `EXPO_PUBLIC_SANITY_PROJECT_ID`/`_DATASET` only). Studio is a standalone app in `studio/` (deployed; `studio` is excluded from the app's tsc and lint). Schema deploys and content changes go through the Sanity MCP, and generated property copy uses Agent Actions.
+  - Types: `property` (the stay), `host`, `policy` (Havenly's own; `body` is quoted word for word). Stays reference a host and a cancellation policy, and carry `houseRules`.
+  - Code filters on fixed lists in `studio/schemaTypes/shared/options.ts` (mirrored in `src/lib/search/vocabulary.ts`): `propertyType`, `category` (the home chips), `amenities` (camelCase keys), `place.region` (e.g. "CA"), `pricePerNight` (whole GBP), `maxGuests`, `petsAllowed`. Change both lists together.
+  - The app reads Sanity only through `src/app/api/*` (`sanityQuery` in `src/lib/server/sanity.ts`, plain HTTPS, `$params`): `POST /api/search`, `GET /api/stays`, `GET /api/stays/<slug>`.
+  - Embeddings cover stays only, projection `{ title, propertyType, category, summary, description, amenities, place }`. `description` holds the feel of a stay (quiet, cozy, views), which is what soft intent matches.
+- **Search parsing:** `src/lib/search/parse-query.ts` reads prices (GBP), guests, nights, pets, types, amenities ("no wifi" is not a requirement) and places (US states, cities that exist in Sanity) in code; soft words and leftovers only rank. `understood.ts` turns the parse into chips; removing a chip or applying filters sends the edited parse back. Search runs as the guest types (450 ms pause, 3+ characters) because each search costs a semantic query.
 - **Exact constraints** (price, guests, type, amenities, pets, place): GROQ filters, with values always passed as params.
 - **Soft intent** (quiet, cozy, secluded): Dataset Embeddings via `text::semanticSimilarity()` inside `score()`.
 - **Policy knowledge:** a Sanity Context endpoint in Knowledge Base mode. Context endpoints are created in the Dashboard's Context app and read with an organization token (Context Viewer), per https://www.sanity.io/docs/ai/context-migration-guide. One endpoint serves one mode. The Context skill still describes `sanity.agentContext` Studio documents with a project token; that route is deprecated, so don't use it.
 - **Typed decisions** (which stay topics and policies answer a question): Jev, called from API routes through the AI SDK's `experimental_evaluate` with the `@ai-sdk/typesafe-ai` provider and `TYPESAFE_AI_API_KEY`. No Vercel AI Gateway. Keep `ai` and `@ai-sdk/typesafe-ai` pinned to exact versions, since the API is experimental.
 - **Answer text:** none generated. Answers show the stay's own fields and policy text word for word, with their source. No LLM runs in the app.
+- **Bookings:** Clerk private metadata (`privateMetadata.bookings`, max 40), read and written only by `/api/bookings` and `/api/bookings/<id>/cancel` with the secret key (`src/lib/server/bookings.ts`). The server works out nights and totals from Sanity and refuses past dates, more than 30 nights, too many guests and overlaps with your own trips. No payment yet. Hearted stays are in memory only (`saved-stays`) until a favorites plan.
 - **Analytics:** PostHog, identified through Clerk.
 
 ## Rules
@@ -52,7 +62,7 @@ Each tool has one job. Ask before moving a responsibility to a different tool.
 - Prices, guest counts, and dates are parsed in code. Jev may choose between candidates code found, but never produces the value.
 - Embeddings rank, they don't filter, and they only see the document itself (no references). Hard constraints are always GROQ filters, and text that should affect ranking lives on the property document.
 - Policy answers show only text from the stay's data and Havenly's policies, word for word. If nothing answers the question, say so and point to support.
-- API routes verify the Clerk session before doing any work.
+- API routes verify the Clerk session before doing any work (`requireSession` in `src/lib/server/require-session.ts`, `@clerk/backend`). The app calls them only through `useApiFetch`/`useApiQuery` in `src/lib/api.ts`, which send the session token; a 401 signs the guest out. Files in `src/lib/server/` are imported only by `+api.ts` files.
 - PostHog failures never block the app. Never send what guests type, tokens, or personal data in events.
 - Let Sanity generate document IDs. Model relationships as references.
 - Ask before adding a dependency or service, changing the Sanity schema once content exists, or deleting data. Prefer Expo modules over third-party libraries.
@@ -92,6 +102,8 @@ Designs are attached in the chat. Screens must match them exactly: layout, spaci
 - Shared UI lives in `src/components/ui/`, and `/design-system` previews every piece. Add new primitives there and to the preview.
 - Feedback uses `toast.success|error|info(title, message?)` from `@/components/ui/toast` (`react-native-toast-message` with our own card design, top of screen, 3.5s, one host in the root layout). Never import the library in screens. Form validation shows red field borders plus one toast (`reportInvalid`), never inline error text. Clerk errors do the same with Clerk's message (`clerkFieldErrors`, `reportClerkError` in `src/screens/auth/clerk-errors.ts`).
 - Photo cards darken under white text with the `scrim` token as a gradient (`experimental_backgroundImage` on native, `backgroundImage` on web). `title-lg` (28/30) is the photo card title.
+- Prices are pounds via `formatPrice` (`src/lib/format.ts`); dates are `YYYY-MM-DD` strings formatted with `src/lib/dates.ts`, not `Intl`. Bottom sheets use `Sheet`; date ranges use `DateRangeCalendar`; amenity icons come from `src/lib/amenities.ts`.
+- Data screens follow the React Compiler lint: no synchronous `setState` in effects (key results to their request instead) and no ref reads during render.
 
 ## Reporting
 

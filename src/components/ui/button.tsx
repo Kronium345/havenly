@@ -63,7 +63,9 @@ export function Button({
       ) : (
         <>
           {leading}
-          <AppText variant="button">{title}</AppText>
+          <AppText variant="button" numberOfLines={1}>
+            {title}
+          </AppText>
           {showArrow ? (
             <View style={tw`absolute right-6`}>
               <Icon as={ArrowRight} />

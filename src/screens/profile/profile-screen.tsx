@@ -1,13 +1,11 @@
 import { useClerk, useUser } from "@clerk/expo";
-import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { ChevronLeft } from "lucide-react-native";
 import { useState } from "react";
 import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { APP_TAB_BAR_HEIGHT } from "@/components/app-tab-bar";
 import { Button } from "@/components/ui/button";
-import { IconButton } from "@/components/ui/icon-button";
 import { AppText } from "@/components/ui/text";
 import { toast } from "@/components/ui/toast";
 import { displayFirstName } from "@/lib/display-name";
@@ -15,15 +13,12 @@ import { tw } from "@/theme";
 
 // Basic until the profile.png design is built: who is signed in, and Sign out.
 export function ProfileScreen() {
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useUser();
   const { signOut } = useClerk();
   const [signingOut, setSigningOut] = useState(false);
   const firstName = displayFirstName(user);
   const email = user?.primaryEmailAddress?.emailAddress;
-
-  const goBack = () => (router.canGoBack() ? router.back() : router.replace("/home"));
 
   const handleSignOut = async () => {
     setSigningOut(true);
@@ -41,12 +36,10 @@ export function ProfileScreen() {
     <View
       style={[
         tw`flex-1 bg-surface px-screen`,
-        { paddingTop: insets.top + 8, paddingBottom: Math.max(insets.bottom, 8) + 16 },
+        { paddingTop: insets.top + 8, paddingBottom: APP_TAB_BAR_HEIGHT + insets.bottom + 24 },
       ]}
     >
       <StatusBar style="dark" />
-      <IconButton icon={ChevronLeft} accessibilityLabel="Back" variant="outline" size="md" onPress={goBack} />
-
       <AppText variant="hero" accessibilityRole="header" style={tw`mt-7`}>
         Profile
       </AppText>

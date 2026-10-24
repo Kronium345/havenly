@@ -49,12 +49,14 @@ import { Badge } from "@/components/ui/badge";
 import { BrandLogo } from "@/components/ui/brand-logo";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
+import { DateRangeCalendar, type DateRange } from "@/components/ui/date-range-calendar";
 import { Icon } from "@/components/ui/icon";
 import { IconButton } from "@/components/ui/icon-button";
 import { ListingCard } from "@/components/ui/listing-card";
 import { PolicyCard } from "@/components/ui/policy-card";
 import { ProfileRow, ProfileRowGroup } from "@/components/ui/profile-row";
 import { SegmentedControl } from "@/components/ui/segmented-control";
+import { Sheet } from "@/components/ui/sheet";
 import { StatusBanner } from "@/components/ui/status-banner";
 import { Stepper } from "@/components/ui/stepper";
 import { TabBar } from "@/components/ui/tab-bar";
@@ -114,6 +116,8 @@ export default function DesignSystemScreen() {
   const [saved, setSaved] = useState(false);
   const [tab, setTab] = useState<"home" | "search" | "trips" | "profile">("home");
   const [banners, setBanners] = useState({ success: true, error: true });
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [dates, setDates] = useState<DateRange>({});
 
   return (
     <ScrollView contentContainerStyle={tw`gap-4 px-screen py-6`}>
@@ -353,6 +357,22 @@ export default function DesignSystemScreen() {
           <Badge variant="superhost" label="Superhost" />
           <Badge variant="explorer" icon={Star} label="Havenly Explorer" />
         </View>
+      </Section>
+
+      <Section number="17" title="Date range calendar">
+        <DateRangeCalendar value={dates} onChange={setDates} style={tw`rounded-xl bg-surface p-4`} />
+      </Section>
+
+      <Section number="16" title="Sheet">
+        <Button title="Open sheet" variant="secondary" size="md" onPress={() => setSheetOpen(true)} />
+        <Sheet
+          visible={sheetOpen}
+          onClose={() => setSheetOpen(false)}
+          title="Filters"
+          footer={<Button title="Apply" onPress={() => setSheetOpen(false)} />}
+        >
+          <AppText variant="body">Sheets hold filters, sort options and short details.</AppText>
+        </Sheet>
       </Section>
     </ScrollView>
   );

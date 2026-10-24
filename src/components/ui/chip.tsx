@@ -17,6 +17,7 @@ export function Chip({
   icon,
   selected = false,
   onPress,
+  accessibilityHint,
   style,
 }: {
   label: string;
@@ -25,12 +26,14 @@ export function Chip({
   icon?: LucideIcon;
   selected?: boolean;
   onPress?: () => void;
+  accessibilityHint?: string;
   style?: StyleProp<ViewStyle>;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected }}
+      accessibilityHint={accessibilityHint}
       onPress={onPress}
       style={({ pressed }) => [
         tw.style(

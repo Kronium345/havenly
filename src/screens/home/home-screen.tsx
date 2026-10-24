@@ -1,42 +1,42 @@
 import { useUser } from "@clerk/expo";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { Calendar, House, Search, User } from "lucide-react-native";
+import { Search } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { APP_TAB_BAR_HEIGHT } from "@/components/app-tab-bar";
+import { StayCardPlaceholders, StayListMessage } from "@/components/stay-list-states";
 import { Chip } from "@/components/ui/chip";
 import { Icon } from "@/components/ui/icon";
-import { TabBar } from "@/components/ui/tab-bar";
 import { AppText } from "@/components/ui/text";
-import { toast } from "@/components/ui/toast";
 import { Wordmark } from "@/components/ui/wordmark";
+import { useApiQuery } from "@/lib/api";
 import { displayFirstName } from "@/lib/display-name";
+import type { StayCard } from "@/lib/search/types";
 import { tw } from "@/theme";
 
 import { AiSearchBar } from "./ai-search-bar";
 import { FeaturedStayCard } from "./featured-stay-card";
-import { categories, StayCategory, stays } from "./stays";
+import { categories, StayCategory } from "./stays";
 
-const TAB_BAR_HEIGHT = 76; // TabBar: 64 items + 6 padding top and bottom
-const tabs = [
-  { key: "home", label: "Home", icon: House },
-  { key: "search", label: "Search", icon: Search },
-  { key: "trips", label: "Trips", icon: Calendar },
-  { key: "profile", label: "Profile", icon: User },
-] as const;
-
-const comingNext = (what: string) => toast.info(`${what} is coming next.`);
+const FEATURED_CARD_HEIGHT = 268; // matches FeaturedStayCard
 
 export function HomeScreen() {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user } = useUser();
+  const stays = useApiQuery<StayCard[]>("/api/stays");
   const [category, setCategory] = useState<StayCategory | "all">("all");
   const firstName = displayFirstName(user);
-  const visible = category === "all" ? stays : stays.filter((stay) => stay.category === category);
   const categoryLabel = categories.find((item) => item.key === category)?.label ?? "";
+  const visible =
+    stays.status === "ready"
+      ? category === "all"
+        ? stays.data
+        : stays.data.filter((stay) => stay.category === category)
+      : [];
 
   return (
     <View style={tw`flex-1 bg-surface`}>
@@ -44,7 +44,7 @@ export function HomeScreen() {
       <ScrollView
         contentContainerStyle={[
           tw`px-screen`,
-          { paddingTop: insets.top + 8, paddingBottom: TAB_BAR_HEIGHT + insets.bottom + 32 },
+          { paddingTop: insets.top + 8, paddingBottom: APP_TAB_BAR_HEIGHT + insets.bottom + 32 },
         ]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
@@ -54,7 +54,7 @@ export function HomeScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Your profile"
-            onPress={() => router.push("/profile")}
+            onPress={() => router.navigate("/profile")}
             style={tw`h-21 w-21 items-center justify-center rounded-full bg-primary-tint`}
           >
             <AppText variant="display">{firstName[0]?.toUpperCase()}</AppText>
@@ -71,7 +71,7 @@ export function HomeScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Search"
-            onPress={() => comingNext("Search")}
+            onPress={() => router.navigate("/search")}
             style={({ pressed }) => [
               tw`h-20 w-16 items-center justify-center rounded-3xl bg-canvas`,
               { opacity: pressed ? 0.7 : 1 },
@@ -83,7 +83,9 @@ export function HomeScreen() {
 
         <View style={tw`mt-5`}>
           <AiSearchBar
-            onSubmit={() => toast.info("AI search is coming next.", "It will rank stays from your sentence.")}
+            onSubmit={(query) =>
+              query ? router.navigate({ pathname: "/search", params: { q: query } }) : router.navigate("/search")
+            }
           />
         </View>
 
@@ -101,27 +103,29 @@ export function HomeScreen() {
         </View>
 
         <View style={tw`mt-6 gap-5`}>
-          {visible.length > 0 ? (
+          {stays.status === "loading" ? (
+            <StayCardPlaceholders count={2} height={FEATURED_CARD_HEIGHT} />
+          ) : stays.status === "error" ? (
+            <StayListMessage
+              title="Couldn't load stays."
+              message={stays.error.message}
+              actionLabel="Try again"
+              onAction={stays.retry}
+            />
+          ) : visible.length > 0 ? (
             visible.map((stay) => (
-              <FeaturedStayCard key={stay.id} stay={stay} onPress={() => comingNext("Stay details")} />
+              <FeaturedStayCard
+                key={stay._id}
+                stay={stay}
+                onPress={() => router.push({ pathname: "/stay/[slug]", params: { slug: stay.slug } })}
+              />
             ))
           ) : (
-            <AppText variant="body" style={tw`py-10 text-center`}>
-              No {categoryLabel.toLowerCase()} stays yet.
-            </AppText>
+            <StayListMessage title={`No ${categoryLabel.toLowerCase()} stays yet.`} />
           )}
         </View>
       </ScrollView>
 
-      <TabBar
-        items={[...tabs]}
-        activeKey="home"
-        onPress={(key) => {
-          if (key === "profile") router.push("/profile");
-          else if (key !== "home") comingNext(tabs.find((tab) => tab.key === key)?.label ?? "This tab");
-        }}
-        style={[tw`absolute left-4 right-4`, { bottom: insets.bottom + 8 }]}
-      />
     </View>
   );
 }

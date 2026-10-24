@@ -49,6 +49,12 @@
       "skillPath": "skills/clerk-webhooks/SKILL.md",
       "computedHash": "2e09a26af49fcd7081b9c370e9c2008f1ff5ee4474141fd2c693431358c9e4ec"
     },
+    "content-modeling-best-practices": {
+      "source": "sanity-io/agent-toolkit",
+      "sourceType": "github",
+      "skillPath": "skills/content-modeling-best-practices/SKILL.md",
+      "computedHash": "7e2b080109bfc77dc16696da77dbe63786fe08f726e525b0704cf255fed49da9"
+    },
     "expo-animation": {
       "source": "expo/skills",
       "sourceType": "github",
@@ -84,6 +90,12 @@
       "sourceType": "github",
       "skillPath": "plugins/expo/skills/expo-router/SKILL.md",
       "computedHash": "2cce1f3cc95599a43532d8a0fe993d218302c3a143d4c40c451d8ce91f39b519"
+    },
+    "sanity-best-practices": {
+      "source": "sanity-io/agent-toolkit",
+      "sourceType": "github",
+      "skillPath": "skills/sanity-best-practices/SKILL.md",
+      "computedHash": "b82547e474392f22914fe0e359e616583ea2fef81ff33df3509442af57ad049c"
     }
   }
 }

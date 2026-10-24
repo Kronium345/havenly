@@ -4,10 +4,10 @@ import { Platform, Pressable, View, ViewStyle } from "react-native";
 
 import { Icon } from "@/components/ui/icon";
 import { AppText } from "@/components/ui/text";
-import { unsplashPhoto } from "@/lib/unsplash";
+import { formatPlace, sanityImage } from "@/lib/format";
+import type { StayCard } from "@/lib/search/types";
 import { color, tw } from "@/theme";
 
-import { Stay } from "./stays";
 
 const CARD_HEIGHT = 268; // est. from home.png
 
@@ -19,11 +19,11 @@ const scrimStyle: ViewStyle = Platform.select({
   default: { experimental_backgroundImage: gradient },
 });
 
-export function FeaturedStayCard({ stay, onPress }: { stay: Stay; onPress: () => void }) {
+export function FeaturedStayCard({ stay, onPress }: { stay: StayCard; onPress: () => void }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${stay.title}, ${stay.place}, rated ${stay.rating}`}
+      accessibilityLabel={`${stay.title}, ${formatPlace(stay.place)}, rated ${stay.rating}`}
       onPress={onPress}
       style={({ pressed }) => [
         tw`overflow-hidden rounded-2xl bg-canvas`,
@@ -31,7 +31,7 @@ export function FeaturedStayCard({ stay, onPress }: { stay: Stay; onPress: () =>
       ]}
     >
       <Image
-        source={{ uri: unsplashPhoto(stay.photoId) }}
+        source={{ uri: sanityImage(stay.imageUrl, 1000) }}
         contentFit="cover"
         transition={300}
         accessibilityIgnoresInvertColors
@@ -51,7 +51,7 @@ export function FeaturedStayCard({ stay, onPress }: { stay: Stay; onPress: () =>
           <View style={tw`flex-row items-center gap-1.5`}>
             <Icon as={MapPin} size="sm" color="white" />
             <AppText variant="callout" style={tw`text-white`}>
-              {stay.place}
+              {formatPlace(stay.place)}
             </AppText>
           </View>
           <AppText variant="title-lg" numberOfLines={2} style={tw`text-white`}>

@@ -19,6 +19,7 @@ export function ListingCard({
   amenities = [],
   saved = false,
   onToggleSaved,
+  savePlacement = "image",
   onPress,
   style,
 }: {
@@ -32,6 +33,8 @@ export function ListingCard({
   amenities?: { label: string; icon: LucideIcon }[];
   saved?: boolean;
   onToggleSaved?: () => void;
+  /** "image": over the photo (design system). "end": beside the title (search results). */
+  savePlacement?: "image" | "end";
   onPress?: () => void;
   style?: StyleProp<ViewStyle>;
 }) {
@@ -49,9 +52,9 @@ export function ListingCard({
           source={{ uri: imageUrl }}
           contentFit="cover"
           transition={200}
-          style={tw`w-32 h-40 rounded-lg bg-canvas`}
+          style={tw.style(savePlacement === "end" ? "w-36 h-40" : "w-32 h-40", "rounded-lg bg-canvas")}
         />
-        <View style={tw`flex-1 gap-1.5 py-1 pr-1`}>
+        <View style={tw.style("flex-1 gap-1.5 py-1 pr-1", savePlacement === "end" && "pr-12")}>
           <AppText variant="title" numberOfLines={2}>
             {title}
           </AppText>
@@ -85,13 +88,13 @@ export function ListingCard({
       </Pressable>
       <IconButton
         icon={Heart}
-        accessibilityLabel={saved ? "Remove from saved" : "Save stay"}
-        variant="surface"
+        accessibilityLabel={saved ? `Remove ${title} from saved` : `Save ${title}`}
+        variant={savePlacement === "end" ? "canvas" : "surface"}
         size="md"
         filled={saved}
         iconColor={saved ? "danger" : "ink"}
         onPress={onToggleSaved}
-        style={tw`absolute top-4 left-[92px] w-9 h-9`}
+        style={savePlacement === "end" ? tw`absolute top-3 right-3` : tw`absolute top-4 left-[92px] w-9 h-9`}
       />
     </View>
   );
