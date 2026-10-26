@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- Havenly app mark: a rounded house with an arched door, and a sparkle for AI search.
+       Drawn inside the Android adaptive-icon safe zone (the house spans ~59% of the canvas).
+       The door is a cut-out, so the icon background shows through it. -->
+  <path
+    fill="#0B0B1A"
+    fill-rule="evenodd"
+    d="M488 252 Q512 232 536 252 L792 462 Q812 478 812 504 L812 756 Q812 800 768 800 L256 800 Q212 800 212 756 L212 504 Q212 478 232 462 Z
+       M452 800 L452 652 A60 60 0 0 1 572 652 L572 800 Z"
+  />
+  <path
+    fill="#0B0B1A"
+    d="M716 236 Q724 290 770 298 Q724 306 716 360 Q708 306 662 298 Q708 290 716 236 Z"
+  />
+</svg>

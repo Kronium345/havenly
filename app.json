@@ -4,19 +4,20 @@
     "slug": "havenly",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/logo.png",
     "scheme": "havenly",
     "userInterfaceStyle": "light",
     "ios": {
-      "icon": "./assets/expo.icon",
-      "infoPlist": {}
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.kronium.havenly"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "backgroundColor": "#FFC629",
+        "foregroundImage": "./assets/images/android-adaptive-foreground.png",
+        "monochromeImage": "./assets/images/android-adaptive-foreground.png"
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [

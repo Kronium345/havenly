@@ -47,6 +47,7 @@
     "@types/react-native": "^0.72.8",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~58.0.4",
+    "sharp": "^0.35.5",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -55,7 +56,9 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "generate:app-icon": "node scripts/generate-app-icon.mjs",
+    "generate:android-icon": "node scripts/generate-android-adaptive-foreground.mjs"
   },
   "private": true
 }

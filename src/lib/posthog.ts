@@ -17,6 +17,18 @@ if (!configured && __DEV__) {
 export const posthog = new PostHog(projectToken || "posthog-disabled", {
   host,
   disabled: !configured,
+  // PostHog rejects a whole batch (400 "missing event name attribute") when one message has
+  // no event name, losing every valid event with it. Drop such a message instead, and say
+  // what it was in development so its source can be found.
+  before_send: (event) => {
+    if (event?.event) return event;
+    if (__DEV__) {
+      console.warn("PostHog: dropped a message with no event name.", {
+        propertyKeys: Object.keys(event?.properties ?? {}),
+      });
+    }
+    return null;
+  },
   captureAppLifecycleEvents: true,
   logs: {
     serviceName: "havenly-mobile",
