@@ -11,6 +11,8 @@ const variants = {
   surface: "bg-surface shadow-raised",
   glass: "bg-glass border border-surface",
   outline: "bg-surface border border-border",
+  // Send and other main actions inside an input.
+  primary: "bg-primary",
 } as const;
 
 const sizes = {

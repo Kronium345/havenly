@@ -1,10 +1,12 @@
 import {
+  ArrowUp,
   ArrowUpRight,
   Bath,
   Bell,
   Bookmark,
   Building2,
   Calendar,
+  CalendarX,
   ChevronLeft,
   ChevronRight,
   CircleAlert,
@@ -28,6 +30,7 @@ import {
   Mountain,
   PawPrint,
   Plus,
+  ScrollText,
   Search,
   Settings,
   Share,
@@ -45,6 +48,7 @@ import {
 import { ReactNode, useState } from "react";
 import { ScrollView, View } from "react-native";
 
+import { AnswerCard } from "@/components/ui/answer-card";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { BrandLogo } from "@/components/ui/brand-logo";
@@ -394,6 +398,32 @@ export default function DesignSystemScreen() {
             { label: "Nights", value: "34" },
           ]}
         />
+      </Section>
+
+      <Section number="19" title="Answer card">
+        <AnswerCard
+          icon={CalendarX}
+          title="Moderate cancellation"
+          body="Cancel up to 7 days before check-in and you get a full refund."
+          source="Moderate cancellation · Havenly policy"
+          onSourcePress={() => undefined}
+        />
+        <AnswerCard
+          icon={ScrollText}
+          title="House rules"
+          lines={["Quiet hours 10:00 PM to 8:00 AM", "No smoking indoors"]}
+          source="This stay's house rules"
+        />
+        <AnswerCard
+          icon={CircleHelp}
+          title="No answer found"
+          body="I couldn't find that in this stay's details or Havenly's policies."
+          footer="Try a topic below, or contact Havenly support."
+        />
+        <View style={tw`flex-row gap-3`}>
+          <IconButton icon={ArrowUp} accessibilityLabel="Send" variant="primary" size="md" />
+          <IconButton icon={ArrowUp} accessibilityLabel="Send" variant="primary" size="md" disabled />
+        </View>
       </Section>
     </ScrollView>
   );

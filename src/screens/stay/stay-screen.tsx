@@ -160,7 +160,7 @@ export function StayScreen() {
               icon={MessageSquareText}
               title="Ask about policies"
               description="Cancellation, house rules, pets, check-in and more."
-              onPress={() => openPolicies()}
+              onPress={() => router.push({ pathname: "/stay/[slug]/ask", params: { slug: data.slug } })}
             />
             {policy ? (
               <PolicyCard icon={FileText} title={policy.title} description={policy.summary} onPress={() => openPolicies("cancellation")} />
