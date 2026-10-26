@@ -3,6 +3,7 @@ import { StatusBar } from "expo-status-bar";
 import { ChevronDown } from "lucide-react-native";
 import { ComponentRef, useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, TextInput, View } from "react-native";
+import { usePostHog } from "posthog-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { APP_TAB_BAR_HEIGHT } from "@/components/app-tab-bar";
@@ -13,6 +14,7 @@ import { AppText } from "@/components/ui/text";
 import { cardBadges } from "@/lib/amenities";
 import { ApiError, useApiFetch } from "@/lib/api";
 import { formatPlace, formatPrice, plural, sanityImage } from "@/lib/format";
+import { posthogAppLogger } from "@/lib/posthog";
 import { useSavedStays } from "@/lib/saved-stays";
 import type { ParsedQuery, SearchFilters } from "@/lib/search/parse-query";
 import type { SearchResponse, SearchSort } from "@/lib/search/types";
@@ -33,6 +35,7 @@ const MIN_TYPED_LENGTH = 3;
 
 export function SearchScreen() {
   const router = useRouter();
+  const posthog = usePostHog();
   const insets = useSafeAreaInsets();
   const apiFetch = useApiFetch();
   const saved = useSavedStays();
@@ -115,7 +118,10 @@ export function SearchScreen() {
           autoFocus={!q}
           value={text}
           onChangeText={setText}
-          onSubmit={() => setInput({ query: text.trim() })} // Search key: right away, no pause
+          onSubmit={() => {
+            posthog.capture("search_submitted", { source: "search_screen", has_query: text.trim().length > 0 });
+            setInput({ query: text.trim() });
+          }} // Search key: right away, no pause
           onBack={goBack}
           onOpenFilters={() => setSheet("filters")}
         />
@@ -178,14 +184,16 @@ export function SearchScreen() {
                   saved={saved.isSaved(stay._id)}
                   onToggleSaved={() => saved.toggle(stay)}
                   savePlacement="end"
-                  onPress={() =>
+                  onPress={() => {
+                    posthog.capture("stay_selected", { stay_id: stay._id, source: "search" });
+                    posthogAppLogger.info("stay detail opened", { stay_id: stay._id, source: "search" });
                     router.push({
                       pathname: "/stay/[slug]",
                       params: state.data.parsed.nights
                         ? { slug: stay.slug, nights: String(state.data.parsed.nights) }
                         : { slug: stay.slug },
-                    })
-                  }
+                    });
+                  }}
                 />
               ))}
             </View>
@@ -199,6 +207,7 @@ export function SearchScreen() {
         initial={parsed?.filters ?? NO_FILTERS}
         onClose={() => setSheet(null)}
         onApply={(filters) => {
+          posthog.capture("search_filters_applied", { filter_count: Object.keys(filters).length });
           setSheet(null);
           setInput({ parsed: { ...(parsed ?? { soft: [], rest: text.trim() }), filters } });
         }}
@@ -208,6 +217,7 @@ export function SearchScreen() {
         value={sort}
         onClose={() => setSheet(null)}
         onChange={(next) => {
+          posthog.capture("search_sort_changed", { sort: next });
           setSheet(null);
           setSort(next);
         }}

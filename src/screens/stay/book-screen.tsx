@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import { ChevronLeft } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
+import { usePostHog } from "posthog-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { StayListMessage } from "@/components/stay-list-states";
@@ -17,6 +18,7 @@ import { ApiError, useApiQuery } from "@/lib/api";
 import { useBookings } from "@/lib/bookings";
 import { nightsBetween, shortDate } from "@/lib/dates";
 import { formatPlace, formatPrice, plural, sanityImage } from "@/lib/format";
+import { posthogAppLogger } from "@/lib/posthog";
 import type { StayDetails } from "@/lib/search/types";
 import { tw } from "@/theme";
 
@@ -26,6 +28,7 @@ const BOTTOM_BAR_HEIGHT = 96;
 // out the price again from Sanity; the figures here are for display.
 export function BookScreen() {
   const router = useRouter();
+  const posthog = usePostHog();
   const insets = useSafeAreaInsets();
   const { book } = useBookings();
   const { slug, nights: nightsParam } = useLocalSearchParams<{ slug: string; nights?: string }>();
@@ -74,11 +77,25 @@ export function BookScreen() {
     }
     setSaving(true);
     try {
-      await book({ stayId: data._id, checkIn: range.checkIn, checkOut: range.checkOut, guests });
+      const booking = await book({ stayId: data._id, checkIn: range.checkIn, checkOut: range.checkOut, guests });
+      posthog.capture("booking_confirmed", {
+        stay_id: booking.stayId,
+        nights: booking.nights,
+        guests: booking.guests,
+        total: booking.total,
+      });
+      posthogAppLogger.info("booking confirmation succeeded", {
+        stay_id: booking.stayId,
+        nights: booking.nights,
+        guests: booking.guests,
+      });
       toast.success("Trip booked.", "See it in Trips.");
       router.dismissAll();
       router.navigate("/trips");
     } catch (error) {
+      posthogAppLogger.error("booking confirmation failed", {
+        error_type: error instanceof ApiError ? "api_error" : "unknown_error",
+      });
       toast.error(error instanceof ApiError ? error.message : "Couldn't book this stay. Try again.");
       setSaving(false);
     }

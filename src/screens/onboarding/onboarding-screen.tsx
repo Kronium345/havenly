@@ -18,6 +18,7 @@ import {
 } from "react-native-gesture-handler";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { usePostHog } from "posthog-react-native";
 
 import { BrandLogo } from "@/components/ui/brand-logo";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ const COPY_MIN_HEIGHT = 2 * 40 + 12 + 3 * 24;
 
 export function OnboardingScreen() {
   const router = useRouter();
+  const posthog = usePostHog();
   const insets = useSafeAreaInsets();
   const windowSize = useWindowDimensions();
   // Measured from layout. On web the server has no window, so start at 0 on both
@@ -67,7 +69,10 @@ export function OnboardingScreen() {
     setIndex(clamped);
   };
 
-  const openSignUp = () => router.push("/sign-up");
+  const openSignUp = (event?: "onboarding_completed" | "onboarding_skipped") => {
+    if (event) posthog.capture(event);
+    router.push("/sign-up");
+  };
 
   // Flinging the sheet changes slide too, so the whole screen feels swipeable.
   const flingLeft = useFlingGesture({
@@ -137,7 +142,7 @@ export function OnboardingScreen() {
         style={[tw`absolute left-0 right-0 flex-row items-center justify-between px-6`, { top: insets.top + 8 }]}
       >
         <Wordmark height={40} />
-        {isLast ? null : <SkipPill onPress={openSignUp} />}
+        {isLast ? null : <SkipPill onPress={() => openSignUp("onboarding_skipped")} />}
       </View>
 
       <View
@@ -165,7 +170,7 @@ export function OnboardingScreen() {
                 title={isLast ? "Get started" : "Next"}
                 size="md"
                 showArrow
-                onPress={isLast ? openSignUp : () => goTo(index + 1)}
+                onPress={isLast ? () => openSignUp("onboarding_completed") : () => goTo(index + 1)}
               />
               <Button
                 title="Continue with Google"

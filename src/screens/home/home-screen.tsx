@@ -4,16 +4,19 @@ import { StatusBar } from "expo-status-bar";
 import { Search } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
+import { usePostHog } from "posthog-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { APP_TAB_BAR_HEIGHT } from "@/components/app-tab-bar";
 import { StayCardPlaceholders, StayListMessage } from "@/components/stay-list-states";
+import { Avatar } from "@/components/ui/avatar";
 import { Chip } from "@/components/ui/chip";
 import { Icon } from "@/components/ui/icon";
 import { AppText } from "@/components/ui/text";
 import { Wordmark } from "@/components/ui/wordmark";
 import { useApiQuery } from "@/lib/api";
-import { displayFirstName } from "@/lib/display-name";
+import { displayFirstName, profileImageUrl } from "@/lib/display-name";
+import { posthogAppLogger } from "@/lib/posthog";
 import type { StayCard } from "@/lib/search/types";
 import { tw } from "@/theme";
 
@@ -25,6 +28,7 @@ const FEATURED_CARD_HEIGHT = 268; // matches FeaturedStayCard
 
 export function HomeScreen() {
   const router = useRouter();
+  const posthog = usePostHog();
   const insets = useSafeAreaInsets();
   const { user } = useUser();
   const stays = useApiQuery<StayCard[]>("/api/stays");
@@ -55,9 +59,8 @@ export function HomeScreen() {
             accessibilityRole="button"
             accessibilityLabel="Your profile"
             onPress={() => router.navigate("/profile")}
-            style={tw`h-21 w-21 items-center justify-center rounded-full bg-primary-tint`}
           >
-            <AppText variant="display">{firstName[0]?.toUpperCase()}</AppText>
+            <Avatar imageUrl={profileImageUrl(user)} name={firstName} size="lg" />
           </Pressable>
         </View>
 
@@ -83,9 +86,10 @@ export function HomeScreen() {
 
         <View style={tw`mt-5`}>
           <AiSearchBar
-            onSubmit={(query) =>
-              query ? router.navigate({ pathname: "/search", params: { q: query } }) : router.navigate("/search")
-            }
+            onSubmit={(query) => {
+              posthog.capture("stay_search_submitted", { source: "home", has_query: query.length > 0 });
+              query ? router.navigate({ pathname: "/search", params: { q: query } }) : router.navigate("/search");
+            }}
           />
         </View>
 
@@ -117,7 +121,11 @@ export function HomeScreen() {
               <FeaturedStayCard
                 key={stay._id}
                 stay={stay}
-                onPress={() => router.push({ pathname: "/stay/[slug]", params: { slug: stay.slug } })}
+                onPress={() => {
+                  posthog.capture("stay_selected", { stay_id: stay._id, source: "home" });
+                  posthogAppLogger.info("stay detail opened", { stay_id: stay._id, source: "home" });
+                  router.push({ pathname: "/stay/[slug]", params: { slug: stay.slug } });
+                }}
               />
             ))
           ) : (

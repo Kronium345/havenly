@@ -25,3 +25,8 @@ export function splitFullName(fullName: string) {
   const [firstName, ...rest] = fullName.trim().split(/\s+/);
   return { firstName, lastName: rest.length > 0 ? rest.join(" ") : undefined };
 }
+
+/** The guest's photo, or undefined when Clerk only has its generated default image. */
+export function profileImageUrl(user: { hasImage: boolean; imageUrl: string } | null | undefined) {
+  return user?.hasImage ? user.imageUrl : undefined;
+}

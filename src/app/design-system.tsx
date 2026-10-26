@@ -45,6 +45,7 @@ import {
 import { ReactNode, useState } from "react";
 import { ScrollView, View } from "react-native";
 
+import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { BrandLogo } from "@/components/ui/brand-logo";
 import { Button } from "@/components/ui/button";
@@ -57,6 +58,7 @@ import { PolicyCard } from "@/components/ui/policy-card";
 import { ProfileRow, ProfileRowGroup } from "@/components/ui/profile-row";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Sheet } from "@/components/ui/sheet";
+import { StatGroup } from "@/components/ui/stat-group";
 import { StatusBanner } from "@/components/ui/status-banner";
 import { Stepper } from "@/components/ui/stepper";
 import { TabBar } from "@/components/ui/tab-bar";
@@ -66,6 +68,7 @@ import { AppText } from "@/components/ui/text";
 import { Toggle } from "@/components/ui/toggle";
 import { Wordmark } from "@/components/ui/wordmark";
 import { ColorToken, tw } from "@/theme";
+import { ProfileCard } from "@/screens/profile/profile-card";
 
 const SWATCHES: { token: ColorToken; name: string; use: string }[] = [
   { token: "primary", name: "Primary Yellow", use: "Primary actions, active states" },
@@ -85,6 +88,8 @@ const CATEGORIES = [
   { label: "City", icon: Building2 },
   { label: "Villas", icon: TreePalm },
 ];
+
+const SAMPLE_AVATAR = "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&q=80&auto=format&fit=crop";
 
 const FILTERS = ["Cabins", "Under $300", "Pet Friendly", "Quiet"];
 
@@ -373,6 +378,22 @@ export default function DesignSystemScreen() {
         >
           <AppText variant="body">Sheets hold filters, sort options and short details.</AppText>
         </Sheet>
+      </Section>
+
+      <Section number="18" title="Avatar / Profile header">
+        <View style={tw`flex-row items-center gap-3`}>
+          <Avatar name="Joanna" size="md" />
+          <Avatar name="Joanna" size="lg" />
+          <Avatar name="Joanna" imageUrl={SAMPLE_AVATAR} size="lg" />
+        </View>
+        <ProfileCard name="Joanna Smith" email="joanna@example.com" imageUrl={SAMPLE_AVATAR} />
+        <StatGroup
+          stats={[
+            { label: "Trips", value: "12" },
+            { label: "Saved", value: "8" },
+            { label: "Nights", value: "34" },
+          ]}
+        />
       </Section>
     </ScrollView>
   );

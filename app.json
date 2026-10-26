@@ -35,7 +35,13 @@
       ],
       "expo-status-bar",
       "expo-secure-store",
-      "@clerk/expo"
+      "@clerk/expo",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Havenly to use your photos for your profile picture."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

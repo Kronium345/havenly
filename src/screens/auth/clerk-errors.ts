@@ -1,7 +1,7 @@
 import { toast } from "@/components/ui/toast";
 
 // Clerk methods resolve to { error }. API errors carry a list; the first one says the most.
-type ClerkFailure = {
+export type ClerkFailure = {
   message: string;
   longMessage?: string;
   errors?: { message: string; longMessage?: string; meta?: { paramName?: string } }[];

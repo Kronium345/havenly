@@ -3,6 +3,7 @@ import { StatusBar } from "expo-status-bar";
 import { Award, ChevronLeft, ChevronRight, FileText, Heart, MapPin, MessageSquareText, Share, Star } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, Share as NativeShare, ScrollView, View } from "react-native";
+import { usePostHog } from "posthog-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { StayListMessage } from "@/components/stay-list-states";
@@ -14,6 +15,7 @@ import { AppText } from "@/components/ui/text";
 import { cardBadges } from "@/lib/amenities";
 import { useApiQuery } from "@/lib/api";
 import { formatPlace, formatPrice, plural } from "@/lib/format";
+import { posthogAppLogger } from "@/lib/posthog";
 import { useSavedStays } from "@/lib/saved-stays";
 import type { StayDetails } from "@/lib/search/types";
 import { control, tw } from "@/theme";
@@ -27,6 +29,7 @@ const BOTTOM_BAR_HEIGHT = 96;
 
 export function StayScreen() {
   const router = useRouter();
+  const posthog = usePostHog();
   const insets = useSafeAreaInsets();
   const saved = useSavedStays();
   const { slug, nights: nightsParam } = useLocalSearchParams<{ slug: string; nights?: string }>();
@@ -55,11 +58,13 @@ export function StayScreen() {
             icon={Share}
             accessibilityLabel={`Share ${data.title}`}
             variant="surface"
-            onPress={() =>
+            onPress={() => {
+              posthog.capture("stay_shared", { stay_id: data._id });
+              posthogAppLogger.info("stay share initiated", { stay_id: data._id });
               NativeShare.share({
                 message: `${data.title} in ${formatPlace(data.place)} on Havenly, ${formatPrice(data.pricePerNight)} a night.`,
-              }).catch(() => undefined)
-            }
+              }).catch(() => undefined);
+            }}
           />
           <IconButton
             icon={Heart}
@@ -209,12 +214,17 @@ export function StayScreen() {
             </AppText>
           ) : null}
         </View>
-        <Button title="Book this stay" onPress={() =>
+        <Button
+          title="Book this stay"
+          onPress={() => {
+            posthog.capture("stay_booking_started", { stay_id: data._id, preselected_nights: nights ?? null });
             router.push({
               pathname: "/stay/[slug]/book",
               params: nights ? { slug: data.slug, nights: String(nights) } : { slug: data.slug },
-            })
-          } style={tw`px-8`} />
+            });
+          }}
+          style={tw`px-8`}
+        />
       </View>
 
       {topButtons(data)}

@@ -1,4 +1,5 @@
 import { createContext, ReactNode, useCallback, useContext, useMemo, useState } from "react";
+import { usePostHog } from "posthog-react-native";
 
 import type { StayCard } from "./search/types";
 
@@ -32,11 +33,12 @@ const toCard = (stay: StayCard): StayCard => ({
 
 export function SavedStaysProvider({ children }: { children: ReactNode }) {
   const [saved, setSaved] = useState<StayCard[]>([]);
+  const posthog = usePostHog();
   const toggle = useCallback((stay: StayCard) => {
-    setSaved((current) =>
-      current.some((s) => s._id === stay._id) ? current.filter((s) => s._id !== stay._id) : [toCard(stay), ...current],
-    );
-  }, []);
+    const wasSaved = saved.some((current) => current._id === stay._id);
+    setSaved((current) => (wasSaved ? current.filter((item) => item._id !== stay._id) : [toCard(stay), ...current]));
+    posthog.capture(wasSaved ? "saved_stay_removed" : "saved_stay_added", { stay_id: stay._id });
+  }, [posthog, saved]);
   const value = useMemo<SavedStays>(
     () => ({ saved, isSaved: (id) => saved.some((s) => s._id === id), toggle }),
     [saved, toggle],

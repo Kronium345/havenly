@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { View } from "react-native";
+import { usePostHog } from "posthog-react-native";
 
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
@@ -15,6 +16,7 @@ import { tw } from "@/theme";
 /** Confirms a cancellation, showing the stay's cancellation policy word for word. */
 export function CancelTripSheet({ booking, onClose }: { booking: Booking | null; onClose: () => void }) {
   const { cancel } = useBookings();
+  const posthog = usePostHog();
   const [cancelling, setCancelling] = useState(false);
   const stay = useApiQuery<StayDetails>(booking ? `/api/stays/${encodeURIComponent(booking.slug)}` : null);
   const policy = stay.status === "ready" ? stay.data.cancellationPolicy : null;
@@ -23,7 +25,8 @@ export function CancelTripSheet({ booking, onClose }: { booking: Booking | null;
     if (!booking) return;
     setCancelling(true);
     try {
-      await cancel(booking.id);
+      const cancelledBooking = await cancel(booking.id);
+      posthog.capture("booking_cancelled", { stay_id: cancelledBooking.stayId, nights: cancelledBooking.nights });
       toast.success("Trip cancelled.");
       onClose();
     } catch (error) {

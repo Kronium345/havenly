@@ -1,14 +1,16 @@
-import { ClerkProvider, useAuth } from "@clerk/expo";
+import { ClerkProvider, useAuth, useUser } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
 import { useFonts } from "expo-font";
-import { Stack } from "expo-router";
+import { Stack, usePathname } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect, useState } from "react";
-import { Platform } from "react-native";
+import { PostHogErrorBoundary, PostHogProvider, usePostHog } from "posthog-react-native";
+import { useEffect, useRef, useState } from "react";
+import { Platform, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useDeviceContext } from "twrnc";
 
 import { ToastHost } from "@/components/ui/toast";
+import { posthog } from "@/lib/posthog";
 import { fonts, tw } from "@/theme";
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "";
@@ -28,11 +30,77 @@ export default function RootLayout() {
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
       <GestureHandlerRootView style={tw`flex-1`}>
-        <RootStack />
+        {posthog ? (
+          <PostHogProvider
+            client={posthog}
+            autocapture={{ captureScreens: false, captureTouches: true, propsToCapture: ["testID"] }}
+          >
+            <PostHogErrorBoundary fallback={PostHogErrorFallback}>
+              <PostHogIdentity />
+              <PostHogScreenCapture />
+              <RootStack />
+            </PostHogErrorBoundary>
+          </PostHogProvider>
+        ) : (
+          <RootStack />
+        )}
         <ToastHost />
       </GestureHandlerRootView>
     </ClerkProvider>
   );
+}
+
+function PostHogErrorFallback() {
+  return (
+    <View style={tw`flex-1 items-center justify-center bg-canvas px-6`}>
+      <Text style={tw`text-center text-base text-ink`}>Something went wrong. Please restart the app.</Text>
+    </View>
+  );
+}
+
+function PostHogIdentity() {
+  const posthogClient = usePostHog();
+  const { isLoaded, user } = useUser();
+  const identifiedUserId = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    if (!user) {
+      if (identifiedUserId.current) {
+        posthogClient.reset();
+        identifiedUserId.current = null;
+      }
+      return;
+    }
+
+    if (identifiedUserId.current === user.id) return;
+
+    // A different Clerk session began without an intervening signed-out render.
+    if (identifiedUserId.current) posthogClient.reset();
+
+    const personProperties: { email?: string; first_name?: string; last_name?: string } = {};
+    if (user.primaryEmailAddress?.emailAddress) personProperties.email = user.primaryEmailAddress.emailAddress;
+    if (user.firstName) personProperties.first_name = user.firstName;
+    if (user.lastName) personProperties.last_name = user.lastName;
+
+    // Clerk's immutable user id is also the server-verified session subject.
+    posthogClient.identify(user.id, { $set: personProperties });
+    identifiedUserId.current = user.id;
+  }, [isLoaded, posthogClient, user]);
+
+  return null;
+}
+
+function PostHogScreenCapture() {
+  const posthogClient = usePostHog();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    posthogClient.screen(pathname);
+  }, [pathname, posthogClient]);
+
+  return null;
 }
 
 function RootStack() {
