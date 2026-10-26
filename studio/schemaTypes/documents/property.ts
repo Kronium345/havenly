@@ -97,8 +97,17 @@ export const property = defineType({
       rows: 5,
       group: 'listing',
       description:
-        'Two to four sentences on how the stay feels (quiet, cozy, views). AI search ranks stays against this text.',
+        'Two to four sentences on how the stay feels (quiet, cozy, views). AI search ranks stays against this text. Written by scripts/write-stay-copy.ts from this stay\'s facts.',
       validation: (rule) => rule.required(),
+    }),
+    defineField({
+      name: 'highlights',
+      type: 'array',
+      group: 'listing',
+      description:
+        "Short facts about the stay's surroundings and feel, in the host's words. Generated copy may only use these and the other fields.",
+      of: [defineArrayMember({type: 'string', validation: (rule) => rule.max(80)})],
+      validation: (rule) => rule.max(8),
     }),
     defineField({
       name: 'pricePerNight',

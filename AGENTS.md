@@ -18,6 +18,7 @@ npx eas-cli@latest <cmd>    # EAS builds, submits, and updates (use instead of b
 cd studio && npm run dev                          # Studio at localhost:3333
 cd studio && npx sanity schemas deploy            # after schema changes (then npx sanity deploy)
 cd studio && npx sanity datasets embeddings status production
+cd studio && node --env-file=../.env.local scripts/write-stay-copy.ts [--slug <slug>] [--dry-run]  # stay copy
 ~~~
 
 ## Expo
@@ -40,11 +41,12 @@ Each tool has one job. Ask before moving a responsibility to a different tool.
   - Sign-up sends Full name as Clerk first/last name and verifies the email with a 6-digit code on `/verify-email`. Sign-in uses the password; when Clerk returns `needs_client_trust`/`needs_second_factor` it emails a code and opens `/verify-email?flow=sign-in`. The email shown there comes from Clerk's attempt, never the URL. Sign-up screens render `<View nativeID="clerk-captcha" />`.
   - Google/Apple use experimental `useSSO()` from `@clerk/expo/experimental` (browser flow, works in Expo Go, activates the session itself). On web the buttons show an info toast. Native sheets need a development build.
   - Sessions persist through `tokenCache` (`expo-secure-store`). Password minimum is 8 in both Clerk and `validate.ts`; keep them equal. Read names with `displayFirstName` from `src/lib/display-name.ts`. Sign out lives on `/profile`.
-- **Content:** Sanity project `wutkash1`, public dataset `production` (published content readable without a token; the app uses `EXPO_PUBLIC_SANITY_PROJECT_ID`/`_DATASET` only). Studio is a standalone app in `studio/` (deployed; `studio` is excluded from the app's tsc and lint). Schema deploys and content changes go through the Sanity MCP, and generated property copy uses Agent Actions.
+- **Content:** Sanity project `wutkash1`, public dataset `production` (published content readable without a token; the app uses `EXPO_PUBLIC_SANITY_PROJECT_ID`/`_DATASET` only). Studio is a standalone app in `studio/` (deployed; `studio` is excluded from the app's tsc and lint). Schema deploys and content changes go through the Sanity MCP.
   - Types: `property` (the stay), `host`, `policy` (Havenly's own; `body` is quoted word for word). Stays reference a host and a cancellation policy, and carry `houseRules`.
   - Code filters on fixed lists in `studio/schemaTypes/shared/options.ts` (mirrored in `src/lib/search/vocabulary.ts`): `propertyType`, `category` (the home chips), `amenities` (camelCase keys), `place.region` (e.g. "CA"), `pricePerNight` (whole GBP), `maxGuests`, `petsAllowed`. Change both lists together.
   - The app reads Sanity only through `src/app/api/*` (`sanityQuery` in `src/lib/server/sanity.ts`, plain HTTPS, `$params`): `POST /api/search`, `GET /api/stays`, `GET /api/stays/<slug>`.
   - Embeddings cover stays only, projection `{ title, propertyType, category, summary, description, amenities, place }`. `description` holds the feel of a stay (quiet, cozy, views), which is what soft intent matches.
+  - Stay `summary` and `description` are written by `studio/scripts/write-stay-copy.ts` (Agent Actions Generate, `SANITY_WRITE_TOKEN`) from the stay's fields, `highlights` (host facts about surroundings and feel) and photo alt text only. The script checks the result in code and with Agent Actions Prompt, and publishes it only if nothing is unsupported. To change copy, edit the facts or `highlights` and rerun it; don't hand-edit the copy.
 - **Search parsing:** `src/lib/search/parse-query.ts` reads prices (GBP), guests, nights, pets, types, amenities ("no wifi" is not a requirement) and places (US states, cities that exist in Sanity) in code; soft words and leftovers only rank. `understood.ts` turns the parse into chips; removing a chip or applying filters sends the edited parse back. Search runs as the guest types (450 ms pause, 3+ characters) because each search costs a semantic query.
 - **Exact constraints** (price, guests, type, amenities, pets, place): GROQ filters, with values always passed as params.
 - **Soft intent** (quiet, cozy, secluded): Dataset Embeddings via `text::semanticSimilarity()` inside `score()`.
@@ -56,7 +58,7 @@ Each tool has one job. Ask before moving a responsibility to a different tool.
 
 ## Rules
 
-- Secret keys (Clerk secret key, TypeSafe key, Sanity organization token, Sanity write token) never reach the app bundle. Use them only in API routes and local scripts such as seeding. Never put them behind `EXPO_PUBLIC_`, which is bundled into the app. Never commit `.env`. Keep variable names, without values, in `.env.example`.
+- Secret keys (Clerk secret key, TypeSafe key, Sanity organization token, Sanity write token `SANITY_WRITE_TOKEN`) never reach the app bundle. Use them only in API routes and local scripts such as seeding. Never put them behind `EXPO_PUBLIC_`, which is bundled into the app. Never commit `.env`. Keep variable names, without values, in `.env.example`.
 - Sanity Context needs a deployed Studio for the dataset. Redeploy Studio from `studio/` after schema changes.
 - Jev is not an agent. It answers typed questions (Choice, Noul, Score) with probabilities. It never writes GROQ, calls tools, or generates text. Code builds queries from its answers.
 - Prices, guest counts, and dates are parsed in code. Jev may choose between candidates code found, but never produces the value.
