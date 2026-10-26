@@ -41,7 +41,8 @@
         {
           "photosPermission": "Allow Havenly to use your photos for your profile picture."
         }
-      ]
+      ],
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true,

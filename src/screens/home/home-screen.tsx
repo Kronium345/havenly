@@ -88,7 +88,7 @@ export function HomeScreen() {
           <AiSearchBar
             onSubmit={(query) => {
               posthog.capture("stay_search_submitted", { source: "home", has_query: query.length > 0 });
-              query ? router.navigate({ pathname: "/search", params: { q: query } }) : router.navigate("/search");
+              router.navigate(query ? { pathname: "/search", params: { q: query } } : "/search");
             }}
           />
         </View>

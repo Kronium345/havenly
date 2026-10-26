@@ -5,10 +5,11 @@ import { Stack, usePathname } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { PostHogErrorBoundary, PostHogProvider, usePostHog } from "posthog-react-native";
 import { useEffect, useRef, useState } from "react";
-import { Platform, Text, View } from "react-native";
+import { Platform, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useDeviceContext } from "twrnc";
 
+import { AppText } from "@/components/ui/text";
 import { ToastHost } from "@/components/ui/toast";
 import { posthog } from "@/lib/posthog";
 import { fonts, tw } from "@/theme";
@@ -30,20 +31,16 @@ export default function RootLayout() {
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
       <GestureHandlerRootView style={tw`flex-1`}>
-        {posthog ? (
-          <PostHogProvider
-            client={posthog}
-            autocapture={{ captureScreens: false, captureTouches: true, propsToCapture: ["testID"] }}
-          >
-            <PostHogErrorBoundary fallback={PostHogErrorFallback}>
-              <PostHogIdentity />
-              <PostHogScreenCapture />
-              <RootStack />
-            </PostHogErrorBoundary>
-          </PostHogProvider>
-        ) : (
-          <RootStack />
-        )}
+        <PostHogProvider
+          client={posthog}
+          autocapture={{ captureScreens: false, captureTouches: true, propsToCapture: ["testID"] }}
+        >
+          <PostHogErrorBoundary fallback={PostHogErrorFallback}>
+            <PostHogIdentity />
+            <PostHogScreenCapture />
+            <RootStack />
+          </PostHogErrorBoundary>
+        </PostHogProvider>
         <ToastHost />
       </GestureHandlerRootView>
     </ClerkProvider>
@@ -52,8 +49,10 @@ export default function RootLayout() {
 
 function PostHogErrorFallback() {
   return (
-    <View style={tw`flex-1 items-center justify-center bg-canvas px-6`}>
-      <Text style={tw`text-center text-base text-ink`}>Something went wrong. Please restart the app.</Text>
+    <View style={tw`flex-1 items-center justify-center bg-canvas px-screen`}>
+      <AppText variant="body" style={tw`text-center text-ink`}>
+        Something went wrong. Please restart the app.
+      </AppText>
     </View>
   );
 }
@@ -79,13 +78,8 @@ function PostHogIdentity() {
     // A different Clerk session began without an intervening signed-out render.
     if (identifiedUserId.current) posthogClient.reset();
 
-    const personProperties: { email?: string; first_name?: string; last_name?: string } = {};
-    if (user.primaryEmailAddress?.emailAddress) personProperties.email = user.primaryEmailAddress.emailAddress;
-    if (user.firstName) personProperties.first_name = user.firstName;
-    if (user.lastName) personProperties.last_name = user.lastName;
-
-    // Clerk's immutable user id is also the server-verified session subject.
-    posthogClient.identify(user.id, { $set: personProperties });
+    // Only Clerk's user id: no email or names go to PostHog (AGENTS.md rule).
+    posthogClient.identify(user.id);
     identifiedUserId.current = user.id;
   }, [isLoaded, posthogClient, user]);
 
