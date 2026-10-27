@@ -22,7 +22,7 @@ const CARD_FIELD_LIST = `
   "imageUrl": images[0].asset->url,
   "imageAlt": images[0].alt
 `;
-const CARD_FIELDS = `{${CARD_FIELD_LIST}}`;
+export const CARD_FIELDS = `{${CARD_FIELD_LIST}}`;
 
 const orderBy: Record<SearchSort, string> = {
   best: "order(_score desc, rating desc, reviewCount desc)",

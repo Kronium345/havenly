@@ -1,7 +1,7 @@
 import { useUser } from "@clerk/expo";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { Bell, CircleHelp, CreditCard, FileText, Luggage, Settings, User } from "lucide-react-native";
+import { Bell, Building2, CircleHelp, CreditCard, FileText, Luggage, Settings, User } from "lucide-react-native";
 import { useState } from "react";
 import { ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -17,11 +17,14 @@ import { displayFirstName, profileImageUrl } from "@/lib/display-name";
 import { useSavedStays } from "@/lib/saved-stays";
 import { tw } from "@/theme";
 
+import { useHosting } from "@/screens/host/use-hosting";
+
 import { CancellationPoliciesSheet } from "./cancellation-policies-sheet";
+import { HostingSheet } from "./hosting-sheet";
 import { ProfileCard } from "./profile-card";
 import { SettingsSheet } from "./settings-sheet";
 
-type OpenSheet = "settings" | "policies" | null;
+type OpenSheet = "settings" | "policies" | "hosting" | null;
 
 export function ProfileScreen() {
   const router = useRouter();
@@ -30,6 +33,13 @@ export function ProfileScreen() {
   const { status, bookings } = useBookings();
   const { saved } = useSavedStays();
   const [sheet, setSheet] = useState<OpenSheet>(null);
+  const hosting = useHosting();
+  // Only host company members (or invitees) see hosting; one company opens straight away.
+  const showHosting = hosting.memberships.length + hosting.invitations.length > 0;
+  const openHosting = () =>
+    hosting.memberships.length === 1 && hosting.invitations.length === 0
+      ? hosting.enter(hosting.memberships[0].organization.id)
+      : setSheet("hosting");
 
   const email = user?.primaryEmailAddress?.emailAddress;
   const name = user?.fullName?.trim() || displayFirstName(user);
@@ -72,6 +82,7 @@ export function ProfileScreen() {
             <ProfileRow icon={User} label="Account" onPress={() => router.push("/personal-info")} />
             <ProfileRow icon={CreditCard} label="Payment methods" onPress={() => router.push("/payment-methods")} />
             <ProfileRow icon={Luggage} label="Trips" onPress={() => router.navigate("/trips")} />
+            {showHosting ? <ProfileRow icon={Building2} label="Switch to hosting" onPress={openHosting} /> : null}
           </ProfileRowGroup>
         </View>
 
@@ -92,6 +103,7 @@ export function ProfileScreen() {
 
       <SettingsSheet visible={sheet === "settings"} email={email} onClose={closeSheet} />
       <CancellationPoliciesSheet visible={sheet === "policies"} onClose={closeSheet} />
+      <HostingSheet visible={sheet === "hosting"} onClose={closeSheet} />
     </View>
   );
 }

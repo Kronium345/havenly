@@ -117,6 +117,8 @@ type QuotedStay = {
   pricePerNight: number;
   maxGuests: number;
   policyTitle: string | null;
+  /** The host company's Clerk organization, once the host is linked (prompts/19). */
+  hostOrgId: string | null;
 };
 
 /** Checks a trip the guest wants (dates, guests) and prices it from Sanity. Availability is the database's job. */
@@ -130,7 +132,7 @@ async function quote(input: NewBooking) {
   if (nights > MAX_NIGHTS) throw new BookingError(`Trips can be up to ${MAX_NIGHTS} nights.`, 400);
 
   const stay = await sanityQuery<QuotedStay | null>(
-    `*[_type == "property" && _id == $id][0]{_id, "slug": slug.current, title, "place": place{city, region}, "imageUrl": images[0].asset->url, pricePerNight, maxGuests, "policyTitle": cancellationPolicy->title}`,
+    `*[_type == "property" && _id == $id][0]{_id, "slug": slug.current, title, "place": place{city, region}, "imageUrl": images[0].asset->url, pricePerNight, maxGuests, "policyTitle": cancellationPolicy->title, "hostOrgId": host->clerkOrgId}`,
     { id: input.stayId },
   );
   if (!stay) throw new BookingError("This stay isn't available anymore.", 404);
@@ -159,10 +161,10 @@ export async function startCheckout(userId: string, input: NewBooking): Promise<
       db`UPDATE bookings SET status = 'expired'
          WHERE status = 'held' AND held_until < now() AND (stay_id = ${stay._id} OR user_id = ${userId})`,
       db`INSERT INTO bookings (id, user_id, stay_id, slug, title, city, region, image_url, check_in, check_out,
-           nights, guests, price_per_night, total, status, held_until, policy_title)
+           nights, guests, price_per_night, total, status, held_until, policy_title, host_org_id)
          VALUES (${id}, ${userId}, ${stay._id}, ${stay.slug}, ${stay.title}, ${stay.place.city}, ${stay.place.region},
            ${stay.imageUrl}, ${input.checkIn}, ${input.checkOut}, ${nights}, ${input.guests}, ${stay.pricePerNight},
-           ${total}, 'held', now() + make_interval(mins => ${HOLD_MINUTES}), ${stay.policyTitle})`,
+           ${total}, 'held', now() + make_interval(mins => ${HOLD_MINUTES}), ${stay.policyTitle}, ${stay.hostOrgId})`,
     ]);
   } catch (error) {
     if (isOverlap(error)) throw overlapError(error);

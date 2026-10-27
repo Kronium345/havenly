@@ -21,6 +21,13 @@ export const host = defineType({
       validation: (rule) => rule.integer().min(2000).max(2100),
     }),
     defineField({name: 'bio', type: 'text', rows: 3}),
+    defineField({
+      name: 'clerkOrgId',
+      title: 'Hosting account',
+      type: 'string',
+      readOnly: true,
+      description: 'Clerk organization for this host company. Set by scripts/invite-host.mjs; not edited here.',
+    }),
   ],
   preview: {
     select: {title: 'name', superhost: 'superhost'},
