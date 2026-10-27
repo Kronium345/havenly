@@ -37,3 +37,24 @@ export async function decideChoices(
   }
   return answers;
 }
+
+/** Asks yes/no questions about one piece of text; returns P(yes) per question. Throws like `decideChoices`. */
+export async function decideBooleans(
+  state: string,
+  questions: Record<string, Extract<Experimental_DecisionQuestion, { type: "boolean" }>>,
+): Promise<Record<string, number>> {
+  if (!typeSafe) throw new Error("TYPESAFE_AI_API_KEY is not set.");
+  const result = await decide({
+    model: typeSafe.decisionModel(JEV_MODEL),
+    state,
+    questions,
+    maxRetries: 0,
+    abortSignal: AbortSignal.timeout(TIMEOUT_MS),
+  });
+
+  const answers: Record<string, number> = {};
+  for (const [id, answer] of Object.entries(result.answers)) {
+    if (answer.type === "boolean") answers[id] = answer.probability;
+  }
+  return answers;
+}

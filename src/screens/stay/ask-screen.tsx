@@ -21,8 +21,8 @@ import { StayListMessage } from "@/components/stay-list-states";
 import { AnswerCard } from "@/components/ui/answer-card";
 import { IconButton } from "@/components/ui/icon-button";
 import { AppText } from "@/components/ui/text";
-import { useApiQuery } from "@/lib/api";
-import { answerQuestion, type Answer, type AnswerSource } from "@/lib/ask/answer";
+import { useApiFetch, useApiQuery } from "@/lib/api";
+import { answerQuestion, type Answer, type AnswerSource, type AskResponse } from "@/lib/ask/answer";
 import type { AskTopic, TopicDefinition } from "@/lib/ask/topics";
 import type { StayDetails } from "@/lib/search/types";
 import { tw } from "@/theme";
@@ -30,8 +30,6 @@ import { tw } from "@/theme";
 import { Composer } from "./ask/composer";
 import { MessageBubble } from "./ask/message-bubble";
 import { TypingIndicator } from "./ask/typing-indicator";
-
-const REPLY_DELAY_MS = 500;
 
 const TOPIC_ICONS: Record<AskTopic, LucideIcon> = {
   cancellation: CalendarX,
@@ -45,24 +43,22 @@ const TOPIC_ICONS: Record<AskTopic, LucideIcon> = {
 
 type Message = { id: number; from: "guest"; text: string } | { id: number; from: "havenly"; answer: Answer };
 
-// Sample answers, matched in the app (src/lib/ask/answer.ts) until Jev and Sanity Context
-// land. Every card quotes the stay's data or a Havenly policy word for word.
+// Questions go to /api/stays/<slug>/ask, where Jev picks which policy sentences and stay
+// facts answer them. If the route can't be reached, the keyword matcher answers here.
+// Every card quotes the stay's data or a Havenly policy word for word.
 export function AskScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const posthog = usePostHog();
+  const apiFetch = useApiFetch();
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const stay = useApiQuery<StayDetails>(slug ? `/api/stays/${encodeURIComponent(slug)}` : null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
   const [replying, setReplying] = useState(false);
   const nextId = useRef(0);
-  const replyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pending = useRef(false);
   const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
-
-  useEffect(() => () => {
-    if (replyTimer.current) clearTimeout(replyTimer.current);
-  }, []);
 
   // KeyboardAvoidingView doesn't resize edge-to-edge Android, so the composer is lifted by
   // the keyboard's height instead (iOS gets the "will" events for a smoother move).
@@ -86,25 +82,34 @@ export function AskScreen() {
   const goBack = () => (router.canGoBack() ? router.back() : router.navigate("/home"));
   const ready = stay.status === "ready";
 
-  const ask = (question: string, source: "chip" | "typed") => {
+  const ask = async (question: string, source: "chip" | "typed") => {
     // A ref, not `replying`: Android can fire submit twice in one tick, before state updates.
-    if (stay.status !== "ready" || replyTimer.current) return;
+    if (stay.status !== "ready" || pending.current) return;
     const text = question.trim();
     if (!text) return;
-    const answer = answerQuestion(text, stay.data);
-    posthog.capture("stay_question_asked", {
-      stay_id: stay.data._id,
-      source,
-      topic_count: answer.kind === "cards" ? answer.cards.length : 0,
-    });
+    pending.current = true;
     setMessages((current) => [...current, { id: nextId.current++, from: "guest", text }]);
     setDraft("");
     setReplying(true);
-    replyTimer.current = setTimeout(() => {
-      replyTimer.current = null;
-      setMessages((current) => [...current, { id: nextId.current++, from: "havenly", answer }]);
-      setReplying(false);
-    }, REPLY_DELAY_MS);
+
+    let reply: AskResponse;
+    try {
+      reply = await apiFetch<AskResponse>(`/api/stays/${encodeURIComponent(stay.data.slug)}/ask`, {
+        method: "POST",
+        body: JSON.stringify({ question: text }),
+      });
+    } catch {
+      reply = { answer: answerQuestion(text, stay.data), answeredBy: "keywords" };
+    }
+    posthog.capture("stay_question_asked", {
+      stay_id: stay.data._id,
+      source,
+      topic_count: reply.answer.kind === "cards" ? reply.answer.cards.length : 0,
+      answered_by: reply.answeredBy,
+    });
+    setMessages((current) => [...current, { id: nextId.current++, from: "havenly", answer: reply.answer }]);
+    setReplying(false);
+    pending.current = false;
   };
 
   const openSource = (opens: AnswerSource) => {
@@ -173,7 +178,7 @@ export function AskScreen() {
               <View key={message.id} style={tw`gap-2`}>
                 {message.answer.cards.map((card) => (
                   <AnswerCard
-                    key={card.topic}
+                    key={`${card.topic}:${card.source}`}
                     icon={TOPIC_ICONS[card.topic]}
                     title={card.title}
                     body={card.body}

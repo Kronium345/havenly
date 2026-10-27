@@ -2,7 +2,8 @@ import type { PolicyText, StayDetails } from "../search/types";
 
 import { TOPICS, type AskTopic } from "./topics";
 
-// Sample answers until Jev and Sanity Context land: questions are matched to topics by
+// The keyword matcher: the fallback when /api/stays/<slug>/ask can't use Jev or the
+// Knowledge Base (server) or can't be reached (app). Questions are matched to topics by
 // keyword, and each card quotes this stay's data or a Havenly policy word for word.
 // Nothing here writes answer text; the only fixed words label stored values.
 
@@ -18,6 +19,9 @@ export type AnswerCardData = {
 };
 
 export type Answer = { kind: "cards"; cards: AnswerCardData[] } | { kind: "none" };
+
+/** What /api/stays/<slug>/ask returns. */
+export type AskResponse = { answer: Answer; answeredBy: "jev" | "keywords" };
 
 type AnswerableStay = Pick<
   StayDetails,

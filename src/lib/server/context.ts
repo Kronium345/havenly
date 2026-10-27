@@ -1,5 +1,5 @@
-// Server only. Runs code-built GROQ through the `havenly-search` Sanity Context endpoint
-// (GROQ mode) with its `groq_query` tool. That tool takes no params, so the code-built
+// Server only. Calls Sanity Context endpoints with the organization token. Search runs
+// code-built GROQ through `havenly-search` (GROQ mode) with its `groq_query` tool. That tool takes no params, so the code-built
 // query's `$params` are swapped for literals here, and only here (`inlineParams`).
 // Callers fall back to `sanityQuery` with real params when this throws.
 
@@ -10,31 +10,44 @@ const TIMEOUT_MS = 4000;
 export class ContextError extends Error {}
 
 export async function contextQuery<T>(query: string, params: Record<string, unknown> = {}): Promise<T> {
-  if (!url || !token) throw new ContextError("SANITY_CONTEXT_MCP_URL and SANITY_ORGANIZATION_TOKEN must be set.");
-  const response = await fetch(url, {
+  if (!url) throw new ContextError("SANITY_CONTEXT_MCP_URL must be set.");
+  const text = await callContextTool(url, "groq_query", { query: inlineParams(query, params) });
+  const parsed = JSON.parse(text) as { result?: T } | T;
+  return parsed && typeof parsed === "object" && "result" in parsed ? (parsed.result as T) : (parsed as T);
+}
+
+/** Calls one tool on a Context MCP endpoint and returns its text result. */
+export async function callContextTool(endpoint: string, name: string, args: Record<string, unknown>) {
+  if (!token) throw new ContextError("SANITY_ORGANIZATION_TOKEN must be set.");
+  const response = await fetch(endpoint, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: "application/json, text/event-stream",
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: 1,
-      method: "tools/call",
-      params: { name: "groq_query", arguments: { query: inlineParams(query, params) } },
-    }),
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name, arguments: args } }),
     signal: AbortSignal.timeout(TIMEOUT_MS),
   });
   const message = parseRpc(await response.text());
   if (!response.ok || !message || message.error) {
-    throw new ContextError(message?.error?.message ?? `Context query failed (${response.status}).`);
+    throw new ContextError(message?.error?.message ?? `Context call failed (${response.status}).`);
   }
   const result = message.result;
   const text = result?.content?.find((part) => part.type === "text")?.text;
   if (result?.isError || text === undefined) throw new ContextError(text ?? "Context returned no result.");
-  const parsed = JSON.parse(text) as { result?: T } | T;
-  return parsed && typeof parsed === "object" && "result" in parsed ? (parsed.result as T) : (parsed as T);
+  return text;
+}
+
+/** An endpoint's initial context (schema or Knowledge Base outline) as text. */
+export async function contextOutline(endpoint: string) {
+  if (!token) throw new ContextError("SANITY_ORGANIZATION_TOKEN must be set.");
+  const response = await fetch(`${endpoint}/initial-context`, {
+    headers: { Authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  });
+  if (!response.ok) throw new ContextError(`Context outline failed (${response.status}).`);
+  return response.text();
 }
 
 type Literal = string | number | boolean | Literal[];
