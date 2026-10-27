@@ -100,13 +100,16 @@ export function buildSearch(parsed: ParsedQuery, sort: SearchSort) {
 }
 
 /** Runs through the havenly-search Context endpoint, falling back to Sanity directly. */
-export async function searchStays(parsed: ParsedQuery, sort: SearchSort) {
+export async function searchStays(
+  parsed: ParsedQuery,
+  sort: SearchSort,
+): Promise<SearchResult & { via: "context" | "direct" }> {
   const { query, params } = buildSearch(parsed, sort);
   try {
-    return await contextQuery<SearchResult>(query, params);
+    return { ...(await contextQuery<SearchResult>(query, params)), via: "context" };
   } catch (error) {
     console.warn("Context query failed, used direct:", error instanceof Error ? error.message : error);
-    return sanityQuery<SearchResult>(query, params);
+    return { ...(await sanityQuery<SearchResult>(query, params)), via: "direct" };
   }
 }
 
@@ -143,10 +146,21 @@ export function stayBySlug(slug: string) {
 let citiesCache: { cities: string[]; at: number } | null = null;
 const CITIES_TTL_MS = 5 * 60 * 1000;
 
-/** City names that exist in the stays, so the parser can recognize them. */
-export async function knownCities() {
-  if (citiesCache && Date.now() - citiesCache.at < CITIES_TTL_MS) return citiesCache.cities;
+/** City names that exist in the stays, so the parser can recognize them; `cached` says whether Sanity was skipped. */
+export async function knownCities(): Promise<{ cities: string[]; cached: boolean }> {
+  if (citiesCache && Date.now() - citiesCache.at < CITIES_TTL_MS) return { cities: citiesCache.cities, cached: true };
   const cities = await sanityQuery<string[]>(`array::unique(*[_type == "property"].place.city)`);
   citiesCache = { cities: cities.filter(Boolean), at: Date.now() };
-  return citiesCache.cities;
+  return { cities: citiesCache.cities, cached: false };
+}
+
+/** Stay cards for these ids, in the order given; unknown ids are left out. */
+export async function staysByIds(ids: string[]) {
+  if (ids.length === 0) return [];
+  const found = await sanityQuery<StayCard[]>(
+    `*[_type == "property" && defined(slug.current) && _id in $ids]${CARD_FIELDS}`,
+    { ids },
+  );
+  const byId = new Map(found.map((stay) => [stay._id, stay]));
+  return ids.map((id) => byId.get(id)).filter((stay): stay is StayCard => stay !== undefined);
 }

@@ -1,17 +1,21 @@
 import { createContext, ReactNode, useCallback, useContext, useMemo, useState } from "react";
 
 import { ApiError, useApiFetch, useApiQuery } from "./api";
-import type { Booking, NewBooking } from "./bookings-shared";
+import type { Booking, CheckoutSession, NewBooking } from "./bookings-shared";
 
-// The signed-in guest's bookings, loaded once for the (app) screens. Booking and
-// cancelling update this list from the server's answer, so Trips is always current.
+// The signed-in guest's bookings, loaded once for the (app) screens. Booking (checkout,
+// Stripe's PaymentSheet, then confirmPaid) and cancelling update this list from the
+// server's answer, so Trips is always current.
 
 type Bookings = {
   status: "loading" | "error" | "ready";
   bookings: Booking[];
   error?: ApiError;
   retry: () => void;
-  book: (input: NewBooking) => Promise<Booking>;
+  /** Prices the trip on the server and returns what PaymentSheet needs. Saves nothing. */
+  checkout: (input: NewBooking) => Promise<CheckoutSession>;
+  /** Saves the trip once its payment has succeeded. */
+  confirmPaid: (paymentIntentId: string) => Promise<Booking>;
   cancel: (id: string) => Promise<Booking>;
 };
 
@@ -34,9 +38,14 @@ export function BookingsProvider({ children }: { children: ReactNode }) {
     return booking;
   }, []);
 
-  const book = useCallback(
-    async (input: NewBooking) =>
-      remember(await apiFetch<Booking>("/api/bookings", { method: "POST", body: JSON.stringify(input) })),
+  const checkout = useCallback(
+    (input: NewBooking) =>
+      apiFetch<CheckoutSession>("/api/bookings/checkout", { method: "POST", body: JSON.stringify(input) }),
+    [apiFetch],
+  );
+  const confirmPaid = useCallback(
+    async (paymentIntentId: string) =>
+      remember(await apiFetch<Booking>("/api/bookings", { method: "POST", body: JSON.stringify({ paymentIntentId }) })),
     [apiFetch, remember],
   );
   const cancel = useCallback(
@@ -46,8 +55,8 @@ export function BookingsProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo<Bookings>(
-    () => ({ status: loaded.status, bookings, error: loaded.error, retry: loaded.retry, book, cancel }),
-    [loaded.status, bookings, loaded.error, loaded.retry, book, cancel],
+    () => ({ status: loaded.status, bookings, error: loaded.error, retry: loaded.retry, checkout, confirmPaid, cancel }),
+    [loaded.status, bookings, loaded.error, loaded.retry, checkout, confirmPaid, cancel],
   );
   return <BookingsContext.Provider value={value}>{children}</BookingsContext.Provider>;
 }

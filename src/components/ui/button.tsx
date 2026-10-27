@@ -41,6 +41,8 @@ export function Button({
   style?: StyleProp<ViewStyle>;
 }) {
   const inactive = disabled || loading;
+  // Text on a primary fill is `on-primary` (white): ink on the blue is only 4.0:1.
+  const content = variant === "primary" ? "on-primary" : "ink";
   return (
     <Pressable
       accessibilityRole="button"
@@ -59,16 +61,16 @@ export function Button({
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={color("ink")} />
+        <ActivityIndicator color={color(content)} />
       ) : (
         <>
           {leading}
-          <AppText variant="button" numberOfLines={1}>
+          <AppText variant="button" numberOfLines={1} style={tw`text-${content}`}>
             {title}
           </AppText>
           {showArrow ? (
             <View style={tw`absolute right-6`}>
-              <Icon as={ArrowRight} />
+              <Icon as={ArrowRight} color={content} />
             </View>
           ) : null}
         </>

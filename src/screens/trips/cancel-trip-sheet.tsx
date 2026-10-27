@@ -10,6 +10,7 @@ import { ApiError, useApiQuery } from "@/lib/api";
 import { useBookings } from "@/lib/bookings";
 import type { Booking } from "@/lib/bookings-shared";
 import { dateRange } from "@/lib/dates";
+import { formatPrice } from "@/lib/format";
 import type { StayDetails } from "@/lib/search/types";
 import { tw } from "@/theme";
 
@@ -26,8 +27,17 @@ export function CancelTripSheet({ booking, onClose }: { booking: Booking | null;
     setCancelling(true);
     try {
       const cancelledBooking = await cancel(booking.id);
-      posthog.capture("booking_cancelled", { stay_id: cancelledBooking.stayId, nights: cancelledBooking.nights });
-      toast.success("Trip cancelled.");
+      posthog.capture("booking_cancelled", {
+        stay_id: cancelledBooking.stayId,
+        nights: cancelledBooking.nights,
+        refunded: Boolean(cancelledBooking.refunded),
+      });
+      toast.success(
+        "Trip cancelled.",
+        cancelledBooking.refunded
+          ? `${formatPrice(cancelledBooking.refunded)} goes back to your card in 5 to 10 business days.`
+          : undefined,
+      );
       onClose();
     } catch (error) {
       toast.error(error instanceof ApiError ? error.message : "Couldn't cancel this trip. Try again.");

@@ -11,7 +11,6 @@ import { IconButton } from "@/components/ui/icon-button";
 import { PolicyCard } from "@/components/ui/policy-card";
 import { ProfileRow, ProfileRowGroup } from "@/components/ui/profile-row";
 import { StatGroup } from "@/components/ui/stat-group";
-import { toast } from "@/components/ui/toast";
 import { Wordmark } from "@/components/ui/wordmark";
 import { useBookings } from "@/lib/bookings";
 import { displayFirstName, profileImageUrl } from "@/lib/display-name";
@@ -23,8 +22,6 @@ import { ProfileCard } from "./profile-card";
 import { SettingsSheet } from "./settings-sheet";
 
 type OpenSheet = "settings" | "policies" | null;
-
-const comingSoon = (what: string) => () => toast.info(`${what} are coming soon.`);
 
 export function ProfileScreen() {
   const router = useRouter();
@@ -73,15 +70,15 @@ export function ProfileScreen() {
         <View style={tw`rounded-xl bg-canvas p-1 pt-4`}>
           <ProfileRowGroup title="Account" style={tw`px-2`}>
             <ProfileRow icon={User} label="Personal info" onPress={() => router.push("/personal-info")} />
-            <ProfileRow icon={CreditCard} label="Payment methods" onPress={comingSoon("Payment methods")} />
+            <ProfileRow icon={CreditCard} label="Payment methods" onPress={() => router.push("/payment-methods")} />
             <ProfileRow icon={Luggage} label="Trips" onPress={() => router.navigate("/trips")} />
           </ProfileRowGroup>
         </View>
 
         <View style={tw`rounded-xl bg-canvas p-1 pt-4`}>
           <ProfileRowGroup title="Preferences" style={tw`px-2`}>
-            <ProfileRow icon={Bell} label="Notifications" onPress={comingSoon("Notification settings")} />
-            <ProfileRow icon={CircleHelp} label="Help & support" onPress={comingSoon("Help and support pages")} />
+            <ProfileRow icon={Bell} label="Notifications" onPress={() => router.push("/notifications")} />
+            <ProfileRow icon={CircleHelp} label="Help & support" onPress={() => router.push("/help")} />
           </ProfileRowGroup>
         </View>
 

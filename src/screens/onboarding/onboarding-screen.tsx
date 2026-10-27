@@ -35,7 +35,7 @@ import { Slide, slides } from "./slides";
 
 // Title (2 lines of type-display) + gap + body (3 lines of type-body), so the sheet
 // keeps its height as the copy changes and the photo chip doesn't jump.
-const COPY_MIN_HEIGHT = 2 * 40 + 12 + 3 * 24;
+const COPY_MIN_HEIGHT = 2 * 48 + 12 + 3 * 24;
 
 export function OnboardingScreen() {
   const router = useRouter();

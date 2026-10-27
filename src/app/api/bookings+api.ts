@@ -1,4 +1,4 @@
-import { bookingErrorResponse, createBooking, listBookings, parseNewBooking } from "@/lib/server/bookings";
+import { bookingErrorResponse, createPaidBooking, listBookings, parsePaymentIntentId } from "@/lib/server/bookings";
 import { requireSession } from "@/lib/server/require-session";
 
 export async function GET(request: Request) {
@@ -11,12 +11,13 @@ export async function GET(request: Request) {
   }
 }
 
+// Body: { paymentIntentId }. Saves the trip once Stripe confirms the payment succeeded.
 export async function POST(request: Request) {
   const session = await requireSession(request);
   if (session instanceof Response) return session;
   try {
-    const input = parseNewBooking(await request.json().catch(() => null));
-    return Response.json(await createBooking(session.userId, input), { status: 201 });
+    const paymentIntentId = parsePaymentIntentId(await request.json().catch(() => null));
+    return Response.json(await createPaidBooking(session.userId, paymentIntentId), { status: 201 });
   } catch (error) {
     return bookingErrorResponse(error, "Booking");
   }

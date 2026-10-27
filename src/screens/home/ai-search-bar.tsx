@@ -11,7 +11,7 @@ export function AiSearchBar({ onSubmit }: { onSubmit: (query: string) => void })
   const submit = () => onSubmit(query.trim());
 
   return (
-    <View style={tw`h-15 flex-row items-center gap-2 rounded-full bg-lavender pl-4 pr-2`}>
+    <View style={tw`h-15 flex-row items-center gap-2 rounded-full bg-accent pl-4 pr-2`}>
       <Icon as={Sparkles} size="md" />
       <TextInput
         value={query}

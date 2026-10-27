@@ -9,6 +9,7 @@ import { Platform, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useDeviceContext } from "twrnc";
 
+import { DynamicNotificationsHost } from "@/components/dynamic-notifications-host";
 import { AppText } from "@/components/ui/text";
 import { ToastHost } from "@/components/ui/toast";
 import { posthog } from "@/lib/posthog";
@@ -38,7 +39,9 @@ export default function RootLayout() {
           <PostHogErrorBoundary fallback={PostHogErrorFallback}>
             <PostHogIdentity />
             <PostHogScreenCapture />
-            <RootStack />
+            <DynamicNotificationsHost>
+              <RootStack />
+            </DynamicNotificationsHost>
           </PostHogErrorBoundary>
         </PostHogProvider>
         <ToastHost />

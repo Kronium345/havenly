@@ -64,7 +64,7 @@ export function HomeScreen() {
           </Pressable>
         </View>
 
-        <AppText variant="title" style={tw`mt-3 font-medium text-muted`}>
+        <AppText variant="title" style={tw`mt-1 font-medium text-muted`}>
           Hey, {firstName} 👋
         </AppText>
         <View style={tw`mt-1 flex-row items-center gap-4`}>
@@ -76,7 +76,7 @@ export function HomeScreen() {
             accessibilityLabel="Search"
             onPress={() => router.navigate("/search")}
             style={({ pressed }) => [
-              tw`h-20 w-16 items-center justify-center rounded-3xl bg-canvas`,
+              tw`h-14 w-14 items-center justify-center rounded-full bg-canvas`,
               { opacity: pressed ? 0.7 : 1 },
             ]}
           >

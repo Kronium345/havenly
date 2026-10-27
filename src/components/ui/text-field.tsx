@@ -41,7 +41,7 @@ export function TextField({
       style={[
         tw.style(
           "flex-row items-center rounded-lg px-4 gap-3 border-[1.5px]",
-          focused ? "bg-surface border-lavender shadow-focus" : "bg-canvas border-transparent",
+          focused ? "bg-surface border-primary shadow-focus" : "bg-canvas border-transparent",
           error && "border-danger",
         ),
         { minHeight: label ? 60 : control.lg },
@@ -62,8 +62,8 @@ export function TextField({
         accessibilityHint={error ?? inputProps.accessibilityHint}
           secureTextEntry={secureTextEntry && hidden}
           placeholderTextColor={color("placeholder")}
-          selectionColor={color("lavender-deep")}
-          cursorColor={color("lavender-deep")}
+          selectionColor={color("primary")}
+          cursorColor={color("primary")}
           onFocus={(e) => {
             setFocused(true);
             onFocus?.(e);

@@ -42,7 +42,7 @@ export function CodeInput({
               key={i}
               style={tw.style(
                 "h-14 w-12 items-center justify-center rounded-lg border-[1.5px]",
-                active ? "bg-surface border-lavender shadow-focus" : "bg-canvas border-transparent",
+                active ? "bg-surface border-primary shadow-focus" : "bg-canvas border-transparent",
                 invalid && "border-danger",
               )}
             >

@@ -48,6 +48,7 @@ export function TripCard({
             </AppText>
             {cancelled ? <Badge variant="discount" label="Cancelled" /> : null}
           </View>
+          <AppText variant="caption">{paymentLine(booking)}</AppText>
         </View>
       </Pressable>
       {onCancel ? (
@@ -65,4 +66,11 @@ export function TripCard({
       ) : null}
     </View>
   );
+}
+
+/** What was paid and refunded, from the booking's stored amounts. */
+function paymentLine(booking: Booking) {
+  if (booking.amountPaid === undefined) return "Booked before payments";
+  if (booking.status !== "cancelled") return `Paid ${formatPrice(booking.amountPaid)} by card`;
+  return booking.refunded ? `Refunded ${formatPrice(booking.refunded)}` : "No refund under this stay's policy";
 }

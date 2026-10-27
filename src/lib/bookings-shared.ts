@@ -18,9 +18,27 @@ export type Booking = {
   total: number;
   status: "confirmed" | "cancelled";
   createdAt: string;
+  /** Stripe payment. Absent on trips booked before payments existed. */
+  paymentIntentId?: string;
+  /** Whole pounds charged. */
+  amountPaid?: number;
+  /** The stay's cancellation policy when booked, which sets the refund. */
+  policyTitle?: string;
+  /** Whole pounds refunded on cancel (0 when the tier allows none). */
+  refunded?: number;
 };
 
 export type NewBooking = { stayId: string; checkIn: IsoDate; checkOut: IsoDate; guests: number };
+
+/** What `/api/bookings/checkout` returns for Stripe's PaymentSheet. */
+export type CheckoutSession = {
+  paymentIntentId: string;
+  paymentIntentClientSecret: string;
+  customerSessionClientSecret: string;
+  customerId: string;
+  /** Whole pounds. */
+  total: number;
+};
 
 export const MAX_NIGHTS = 30;
 export const MAX_SAVED_BOOKINGS = 40;

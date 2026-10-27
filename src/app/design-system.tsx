@@ -44,6 +44,7 @@ import {
   Wifi,
   X,
   ArrowRight,
+  CalendarCheck,
 } from "lucide-react-native";
 import { ReactNode, useState } from "react";
 import { ScrollView, View } from "react-native";
@@ -71,12 +72,15 @@ import { toast } from "@/components/ui/toast";
 import { AppText } from "@/components/ui/text";
 import { Toggle } from "@/components/ui/toggle";
 import { Wordmark } from "@/components/ui/wordmark";
+import { showBanner } from "@/lib/notifications/banner";
 import { ColorToken, tw } from "@/theme";
 import { ProfileCard } from "@/screens/profile/profile-card";
 
 const SWATCHES: { token: ColorToken; name: string; use: string }[] = [
-  { token: "primary", name: "Primary Yellow", use: "Primary actions, active states" },
-  { token: "lavender", name: "Lavender", use: "Secondary actions, highlights" },
+  { token: "primary", name: "Primary Blue", use: "Primary actions, active states (white text)" },
+  { token: "primary-tint", name: "Primary Tint", use: "Soft highlights, date ranges" },
+  { token: "accent", name: "Accent Lime", use: "AI search, filter chips (ink text)" },
+  { token: "accent-tint", name: "Accent Tint", use: "Chat bubbles, policy cards" },
   { token: "ink", name: "Text Primary", use: "Headings, primary text" },
   { token: "muted", name: "Text Secondary", use: "Body text, secondary text" },
   { token: "surface", name: "Surface White", use: "Cards, sheets, modals" },
@@ -287,7 +291,7 @@ export default function DesignSystemScreen() {
       </Section>
 
       <Section number="10" title="Bottom navigation">
-        <View style={tw`rounded-2xl bg-lavender-tint p-3`}>
+        <View style={tw`rounded-2xl bg-accent-tint p-3`}>
           <TabBar
             activeKey={tab}
             onPress={setTab}
@@ -355,6 +359,12 @@ export default function DesignSystemScreen() {
           <Button title="Success toast" variant="secondary" size="md" onPress={() => toast.success("Welcome to Havenly, Joanna.")} />
           <Button title="Error toast" variant="secondary" size="md" onPress={() => toast.error("3 fields need attention", "Check the highlighted fields.")} />
           <Button title="Info toast" variant="secondary" size="md" onPress={() => toast.info("Search is coming next.")} />
+          <Button
+            title="Dynamic Island banner"
+            variant="secondary"
+            size="md"
+            onPress={() => showBanner({ title: "Your trip starts tomorrow", message: "Wooden Beach Lodge is ready for you.", icon: CalendarCheck })}
+          />
         </View>
       </Section>
 

@@ -7,7 +7,7 @@ import { Icon } from "./icon";
 import { AppText } from "./text";
 
 const selectedBackground = {
-  filter: "bg-lavender",
+  filter: "bg-accent",
   category: "bg-primary",
 } as const;
 
@@ -21,7 +21,7 @@ export function Chip({
   style,
 }: {
   label: string;
-  /** filter: refines results (lavender). category: stay type with icon (yellow). */
+  /** filter: refines results (accent, ink text). category: stay type with icon (primary, white text). */
   variant?: keyof typeof selectedBackground;
   icon?: LucideIcon;
   selected?: boolean;
@@ -29,6 +29,7 @@ export function Chip({
   accessibilityHint?: string;
   style?: StyleProp<ViewStyle>;
 }) {
+  const onPrimary = selected && variant === "category";
   return (
     <Pressable
       accessibilityRole="button"
@@ -45,10 +46,10 @@ export function Chip({
         style,
       ]}
     >
-      {icon ? <Icon as={icon} size="md" filled={selected} /> : null}
+      {icon ? <Icon as={icon} size="md" filled={selected} color={onPrimary ? "on-primary" : "ink"} /> : null}
       <AppText
         variant="callout"
-        style={tw.style(selected ? "font-semibold" : "font-medium")}
+        style={tw.style(selected ? "font-semibold" : "font-medium", onPrimary && "text-on-primary")}
       >
         {label}
       </AppText>

@@ -49,8 +49,10 @@ export function TabBar<K extends string>({
               { width: ITEM_SIZE + 8, height: ITEM_SIZE },
             ]}
           >
-            <Icon as={item.icon} filled={active} />
-            <AppText variant="label">{item.label}</AppText>
+            <Icon as={item.icon} filled={active} color={active ? "on-primary" : "ink"} />
+            <AppText variant="label" style={active ? tw`text-on-primary` : undefined}>
+              {item.label}
+            </AppText>
           </Pressable>
         );
       })}

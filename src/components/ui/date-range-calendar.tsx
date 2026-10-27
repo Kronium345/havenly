@@ -88,7 +88,7 @@ export function DateRangeCalendar({
               >
                 <AppText
                   variant="callout"
-                  style={tw.style(past ? "text-placeholder" : "text-ink", isEnd ? "font-bold" : "font-medium")}
+                  style={tw.style(isEnd ? "text-on-primary" : past ? "text-placeholder" : "text-ink", isEnd ? "font-bold" : "font-medium")}
                 >
                   {Number(day.slice(8))}
                 </AppText>

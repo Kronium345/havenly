@@ -15,7 +15,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#FFC629",
+        "backgroundColor": "#2962FF",
         "foregroundImage": "./assets/images/android-adaptive-foreground.png",
         "monochromeImage": "./assets/images/android-adaptive-foreground.png"
       },
@@ -48,7 +48,19 @@
           "photosPermission": "Allow Havenly to use your photos for your profile picture."
         }
       ],
-      "expo-localization"
+      "expo-localization",
+      [
+        "@stripe/stripe-react-native",
+        {
+          "enableGooglePay": false
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#2962FF"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

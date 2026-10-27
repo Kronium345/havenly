@@ -56,8 +56,8 @@ export function Composer({
           placeholder="Ask about this stay"
           accessibilityLabel="Your question"
           placeholderTextColor={color("placeholder")}
-          selectionColor={color("lavender-deep")}
-          cursorColor={color("lavender-deep")}
+          selectionColor={color("primary")}
+          cursorColor={color("primary")}
           maxLength={MAX_QUESTION_LENGTH}
           multiline
           numberOfLines={4}

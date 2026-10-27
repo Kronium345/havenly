@@ -1,7 +1,7 @@
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { ChevronLeft } from "lucide-react-native";
+import { CalendarCheck, ChevronLeft } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { usePostHog } from "posthog-react-native";
@@ -18,19 +18,23 @@ import { ApiError, useApiQuery } from "@/lib/api";
 import { useBookings } from "@/lib/bookings";
 import { nightsBetween, shortDate } from "@/lib/dates";
 import { formatPlace, formatPrice, plural, sanityImage } from "@/lib/format";
+import { showBanner } from "@/lib/notifications/banner";
+import { runPaymentSheet } from "@/lib/payments/payment-sheet";
+import { isStripeReady } from "@/lib/payments/stripe-config";
 import { posthogAppLogger } from "@/lib/posthog";
 import type { StayDetails } from "@/lib/search/types";
 import { tw } from "@/theme";
 
 const BOTTOM_BAR_HEIGHT = 96;
 
-// No payment yet: confirming saves the trip to the guest's account. The server works
-// out the price again from Sanity; the figures here are for display.
+// Paying books the trip: the server prices it from Sanity (the figures here are for
+// display), Stripe's PaymentSheet takes the card, and the trip is saved only once the
+// server has checked the payment succeeded.
 export function BookScreen() {
   const router = useRouter();
   const posthog = usePostHog();
   const insets = useSafeAreaInsets();
-  const { book } = useBookings();
+  const { checkout, confirmPaid } = useBookings();
   const { slug, nights: nightsParam } = useLocalSearchParams<{ slug: string; nights?: string }>();
   const stay = useApiQuery<StayDetails>(slug ? `/api/stays/${encodeURIComponent(slug)}` : null);
   const [range, setRange] = useState<DateRange>({});
@@ -75,21 +79,43 @@ export function BookScreen() {
       toast.error("Pick your check-in and check-out dates.");
       return;
     }
+    if (!isStripeReady()) {
+      toast.info("Payment works in the Havenly app.", "Card payments aren't available here yet.");
+      return;
+    }
     setSaving(true);
+    posthog.capture("booking_payment_started", { stay_id: data._id, nights, guests });
     try {
-      const booking = await book({ stayId: data._id, checkIn: range.checkIn, checkOut: range.checkOut, guests });
+      const session = await checkout({ stayId: data._id, checkIn: range.checkIn, checkOut: range.checkOut, guests });
+      const outcome = await runPaymentSheet(session);
+      if (outcome.status === "cancelled") {
+        setSaving(false);
+        return;
+      }
+      if (outcome.status === "failed") {
+        toast.error("Payment didn't go through.", outcome.message);
+        setSaving(false);
+        return;
+      }
+      const booking = await confirmPaid(session.paymentIntentId);
       posthog.capture("booking_confirmed", {
         stay_id: booking.stayId,
         nights: booking.nights,
         guests: booking.guests,
         total: booking.total,
+        paid: true,
       });
       posthogAppLogger.info("booking confirmation succeeded", {
         stay_id: booking.stayId,
         nights: booking.nights,
         guests: booking.guests,
       });
-      toast.success("Trip booked.", "See it in Trips.");
+      showBanner({
+        title: "Trip booked",
+        message: `${booking.title}. See it in Trips.`,
+        avatar: booking.imageUrl ? sanityImage(booking.imageUrl, 200) : undefined,
+        icon: CalendarCheck,
+      });
       router.dismissAll();
       router.navigate("/trips");
     } catch (error) {
@@ -161,7 +187,7 @@ export function BookScreen() {
               <AppText variant="headline">Total</AppText>
               <AppText variant="headline">{formatPrice(total)}</AppText>
             </View>
-            <AppText variant="caption">You won&apos;t be charged yet. Payment is coming next.</AppText>
+            <AppText variant="caption">You pay {formatPrice(total)} now by card. Refunds follow the cancellation policy below.</AppText>
           </View>
         ) : null}
 
@@ -205,7 +231,7 @@ export function BookScreen() {
           )}
         </View>
         <Button
-          title="Confirm booking"
+          title={nights > 0 ? `Pay ${formatPrice(total)}` : "Choose dates"}
           loading={saving}
           disabled={!range.checkIn || !range.checkOut}
           onPress={confirm}

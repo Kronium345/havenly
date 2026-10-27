@@ -12,7 +12,7 @@ export function ProgressDashes({ count, active }: { count: number; active: numbe
       {Array.from({ length: count }, (_, i) => (
         <View
           key={i}
-          style={tw.style("h-1 w-8 rounded-full", i === active ? "bg-lavender" : "bg-border")}
+          style={tw.style("h-1 w-8 rounded-full", i === active ? "bg-accent-deep" : "bg-border")}
         />
       ))}
     </View>

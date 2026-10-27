@@ -18,7 +18,7 @@ const variants: Record<
   new: { background: "bg-success-tint", text: "text-success", icon: "success", filledIcon: false },
   discount: { background: "bg-danger-tint", text: "text-danger", icon: "danger", filledIcon: false },
   superhost: { background: "bg-info-tint", text: "text-info", icon: "info", filledIcon: false },
-  explorer: { background: "bg-lavender-tint", text: "text-ink", icon: "primary", filledIcon: true },
+  explorer: { background: "bg-accent-tint", text: "text-ink", icon: "primary", filledIcon: true },
 };
 
 export function Badge({

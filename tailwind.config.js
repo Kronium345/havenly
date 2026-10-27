@@ -6,8 +6,11 @@ const colors = {
   transparent: "transparent",
   white: "#FFFFFF",
   black: "#000000",
-  primary: { DEFAULT: "#FFC629", tint: "#FFF4D1" },
-  lavender: { DEFAULT: "#C9B4FF", tint: "#F1ECFF", deep: "#5B3FD6" },
+  // Hue-reversed brand (prompts/14): blue primary with white text on it, lime accent.
+  primary: { DEFAULT: "#2962FF", tint: "#D1DCFF" },
+  "on-primary": "#FFFFFF",
+  // Never text: lime on white is 1.6:1.
+  accent: { DEFAULT: "#EAFFB4", tint: "#FAFFEC", deep: "#BAD63F" },
   ink: "#0B0B1A",
   muted: "#6B7280",
   placeholder: "#9CA3AF",
@@ -17,6 +20,8 @@ const colors = {
   glass: "rgba(255, 255, 255, 0.7)",
   // Darkens photos under white text (bottom of stay cards).
   scrim: "rgba(11, 11, 26, 0.75)",
+  // Soft drop shadow under the Dynamic Island notification card.
+  shade: "rgba(16, 19, 28, 0.2)",
   success: { DEFAULT: "#1F9D55", tint: "#E7F6EC" },
   danger: { DEFAULT: "#E5484D", tint: "#FDECEE" },
   info: { DEFAULT: "#3B5BDB", tint: "#E8EEFF" },
@@ -32,7 +37,8 @@ const fontFamily = {
 
 // [size, lineHeight, letterSpacing]
 const typeScale = {
-  display: [44, 40, -1.5],
+  // Line height above the size: Android clips descenders ("y" in "stay") on tighter lines.
+  display: [44, 48, -1.5],
   hero: [36, 36, -1],
   heading: [30, 36, -0.8],
   "title-lg": [28, 30, -0.6],
@@ -110,7 +116,7 @@ module.exports = {
         ...typeUtilities,
         "shadow-card": { boxShadow: "0 2px 8px rgba(11, 11, 26, 0.06)" },
         "shadow-raised": { boxShadow: "0 8px 24px rgba(11, 11, 26, 0.10)" },
-        "shadow-focus": { boxShadow: "0 0 0 4px rgba(201, 180, 255, 0.35)" },
+        "shadow-focus": { boxShadow: "0 0 0 4px rgba(41, 98, 255, 0.25)" },
         "shadow-none": { boxShadow: "none" },
       });
     }),

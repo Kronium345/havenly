@@ -25,13 +25,13 @@ export function PolicyCard({
       accessibilityLabel={`${title}. ${description}`}
       onPress={onPress}
       style={({ pressed }) => [
-        tw`flex-row items-center gap-4 rounded-xl bg-lavender-tint p-4`,
+        tw`flex-row items-center gap-4 rounded-xl bg-accent-tint p-4`,
         { opacity: pressed ? 0.75 : 1 },
         style,
       ]}
     >
-      <View style={tw`h-12 w-12 items-center justify-center rounded-md bg-lavender/40`}>
-        <Icon as={icon} color="lavender-deep" />
+      <View style={tw`h-12 w-12 items-center justify-center rounded-md bg-accent`}>
+        <Icon as={icon} color="ink" />
       </View>
       <View style={tw`flex-1 gap-0.5`}>
         <AppText variant="headline">{title}</AppText>
@@ -39,7 +39,7 @@ export function PolicyCard({
           {description}
         </AppText>
       </View>
-      <Icon as={ChevronRight} size="md" color="lavender-deep" />
+      <Icon as={ChevronRight} size="md" color="primary" />
     </Pressable>
   );
 }

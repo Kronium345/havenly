@@ -25,7 +25,7 @@ export function IconButton({
   accessibilityLabel,
   variant = "canvas",
   size = "lg",
-  iconColor = "ink",
+  iconColor,
   filled = false,
   disabled = false,
   onPress,
@@ -57,7 +57,8 @@ export function IconButton({
         style,
       ]}
     >
-      <Icon as={icon} color={iconColor} filled={filled} />
+      {/* Icons on a primary fill default to `on-primary` (white) for contrast. */}
+      <Icon as={icon} color={iconColor ?? (variant === "primary" ? "on-primary" : "ink")} filled={filled} />
     </Pressable>
   );
 }
