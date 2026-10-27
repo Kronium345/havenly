@@ -140,3 +140,8 @@ Steps 1–5 are built. tsc and lint pass. Status stays `approved` until the Stri
   12. Cards are removed.
   13. The test user's metadata was restored afterwards.
 - **Fixed while testing:** newer Stripe accounts reject `payment_method_types` ("no longer supported"), so PaymentIntents and SetupIntents use `allowed_payment_method_types: ["card"]`.
+- **iOS EAS build fix:** `pod install` failed because `stripe-react-native` 0.81 resolves Stripe through Swift Package Manager, which needs dynamic frameworks. Added `expo-build-properties` ~58.0.11 (user approved) with `ios.useFrameworks: "dynamic"`, Stripe's documented Expo fix. Android is unaffected. Not yet confirmed by a new iOS build.
+- **iOS build, second attempt:** with `useFrameworks: "dynamic"`, Expo SDK 58 still logged "Disabling USE_FRAMEWORKS for 87 pods (… stripe-react-native)" (its prebuilt React Native pods must stay static), so Stripe failed the same check.
+  - **Fix:** Stripe's plugin option `disableSPM: true` (`["@stripe/stripe-react-native", { "enableGooglePay": false, "disableSPM": true }]`) writes `$StripeDisableSPM = true` into the Podfile, so Stripe iOS 26.13.0 comes from CocoaPods instead. Stripe marks this deprecated.
+  - `expo-build-properties` was removed again (from `package.json` and the lockfile with `--package-lock-only`, because the disk was full).
+  - Not yet confirmed by a new iOS build.

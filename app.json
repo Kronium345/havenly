@@ -34,7 +34,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#2962FF",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
@@ -52,7 +52,8 @@
       [
         "@stripe/stripe-react-native",
         {
-          "enableGooglePay": false
+          "enableGooglePay": false,
+          "disableSPM": true
         }
       ],
       [
