@@ -34,7 +34,7 @@ export function BookScreen() {
   const router = useRouter();
   const posthog = usePostHog();
   const insets = useSafeAreaInsets();
-  const { checkout, confirmPaid } = useBookings();
+  const { checkout, confirmPaid, release } = useBookings();
   const { slug, nights: nightsParam } = useLocalSearchParams<{ slug: string; nights?: string }>();
   const stay = useApiQuery<StayDetails>(slug ? `/api/stays/${encodeURIComponent(slug)}` : null);
   const [range, setRange] = useState<DateRange>({});
@@ -89,10 +89,12 @@ export function BookScreen() {
       const session = await checkout({ stayId: data._id, checkIn: range.checkIn, checkOut: range.checkOut, guests });
       const outcome = await runPaymentSheet(session);
       if (outcome.status === "cancelled") {
+        release(session.bookingId);
         setSaving(false);
         return;
       }
       if (outcome.status === "failed") {
+        release(session.bookingId);
         toast.error("Payment didn't go through.", outcome.message);
         setSaving(false);
         return;

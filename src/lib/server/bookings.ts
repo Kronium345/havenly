@@ -1,22 +1,17 @@
-import { createClerkClient } from "@clerk/backend";
-
-import {
-  MAX_NIGHTS,
-  MAX_SAVED_BOOKINGS,
-  type Booking,
-  type CheckoutSession,
-  type NewBooking,
-} from "../bookings-shared";
+import { MAX_NIGHTS, type Booking, type CheckoutSession, type NewBooking } from "../bookings-shared";
 import { addDays, isIsoDate, nightsBetween, toIso } from "../dates";
 
+import { isOverlap, sql } from "./db";
 import { refundFor, tierOf } from "./refunds";
 import { sanityQuery } from "./sanity";
 import { customerSession, ensureCustomer, stripeRequest, StripeError, type PaymentIntent } from "./stripe";
 
-// Server only. Bookings live in the signed-in user's Clerk private metadata, which only
-// the secret key can read or write. Prices come from Sanity, never from the app. A trip
-// is saved only after Stripe confirms its PaymentIntent succeeded for this guest and
-// amount; cancelling refunds by the stay's tier (refunds.ts).
+// Server only. Bookings live in Neon Postgres (db/migrations/001_bookings.sql), where two
+// exclusion constraints make overlaps impossible: one stay can't be booked twice for the
+// same nights, and one guest can't hold two trips on the same nights. Checkout holds the
+// dates for 15 minutes while the guest pays; a trip is confirmed only after Stripe says its
+// PaymentIntent succeeded for this guest and amount. Prices come from Sanity, never from
+// the app. Every query is scoped to the session's user id.
 
 export class BookingError extends Error {
   constructor(
@@ -27,24 +22,77 @@ export class BookingError extends Error {
   }
 }
 
-function clerk() {
-  const secretKey = process.env.CLERK_SECRET_KEY;
-  if (!secretKey) throw new BookingError("Server is not configured.", 500);
-  return createClerkClient({ secretKey });
+const HOLD_MINUTES = 15;
+
+type Row = {
+  id: string;
+  user_id: string;
+  stay_id: string;
+  slug: string;
+  title: string;
+  city: string;
+  region: string;
+  image_url: string | null;
+  check_in: string;
+  check_out: string;
+  nights: number;
+  guests: number;
+  price_per_night: number;
+  total: number;
+  status: "held" | "confirmed" | "cancelled" | "expired";
+  payment_intent_id: string | null;
+  amount_paid: number | null;
+  policy_title: string | null;
+  refunded: number | null;
+  created_at: string;
+};
+
+function toBooking(row: Row): Booking {
+  return {
+    id: row.id,
+    stayId: row.stay_id,
+    slug: row.slug,
+    title: row.title,
+    place: { city: row.city, region: row.region },
+    imageUrl: row.image_url,
+    checkIn: row.check_in,
+    checkOut: row.check_out,
+    nights: row.nights,
+    guests: row.guests,
+    pricePerNight: row.price_per_night,
+    total: row.total,
+    status: row.status === "cancelled" ? "cancelled" : "confirmed",
+    createdAt: row.created_at,
+    paymentIntentId: row.payment_intent_id ?? undefined,
+    amountPaid: row.amount_paid ?? undefined,
+    policyTitle: row.policy_title ?? undefined,
+    refunded: row.refunded ?? undefined,
+  };
 }
 
+/** One booking row, with dates as YYYY-MM-DD text (never JS Dates, which shift by timezone). */
+async function findRow(userId: string, id: string): Promise<Row | null> {
+  const rows = (await sql()`
+    SELECT id, user_id, stay_id, slug, title, city, region, image_url,
+      check_in::text AS check_in, check_out::text AS check_out, nights, guests,
+      price_per_night, total, status, payment_intent_id, amount_paid, policy_title,
+      refunded, created_at::text AS created_at
+    FROM bookings WHERE id = ${id} AND user_id = ${userId}`) as Row[];
+  return rows[0] ?? null;
+}
+
+/** The guest's trips (confirmed and cancelled; holds aren't trips), newest check-in first. */
 export async function listBookings(userId: string): Promise<Booking[]> {
-  const user = await clerk().users.getUser(userId);
-  const stored = (user.privateMetadata as { bookings?: unknown }).bookings;
-  return Array.isArray(stored) ? (stored as Booking[]) : [];
+  const rows = (await sql()`
+    SELECT id, user_id, stay_id, slug, title, city, region, image_url,
+      check_in::text AS check_in, check_out::text AS check_out, nights, guests,
+      price_per_night, total, status, payment_intent_id, amount_paid, policy_title,
+      refunded, created_at::text AS created_at
+    FROM bookings
+    WHERE user_id = ${userId} AND status IN ('confirmed', 'cancelled')
+    ORDER BY check_in DESC`) as Row[];
+  return rows.map(toBooking);
 }
-
-async function saveBookings(userId: string, bookings: Booking[]) {
-  await clerk().users.updateUserMetadata(userId, { privateMetadata: { bookings } });
-}
-
-const sortByCheckIn = (bookings: Booking[]) =>
-  [...bookings].sort((a, b) => b.checkIn.localeCompare(a.checkIn));
 
 export function parseNewBooking(body: unknown): NewBooking {
   const input = (body ?? {}) as Partial<NewBooking>;
@@ -71,8 +119,8 @@ type QuotedStay = {
   policyTitle: string | null;
 };
 
-/** Checks a trip the guest wants (dates, guests, overlaps) and prices it from Sanity. */
-async function quote(userId: string, input: NewBooking) {
+/** Checks a trip the guest wants (dates, guests) and prices it from Sanity. Availability is the database's job. */
+async function quote(input: NewBooking) {
   // One day of slack: the guest's "today" can be the server's yesterday.
   if (input.checkIn < addDays(toIso(new Date()), -1)) {
     throw new BookingError("Check-in can't be in the past.", 400);
@@ -89,36 +137,67 @@ async function quote(userId: string, input: NewBooking) {
   if (input.guests < 1 || input.guests > stay.maxGuests) {
     throw new BookingError(`This stay sleeps up to ${stay.maxGuests}.`, 400);
   }
-
-  const bookings = await listBookings(userId);
-  const overlaps = bookings.some(
-    (b) => b.status === "confirmed" && input.checkIn < b.checkOut && b.checkIn < input.checkOut,
-  );
-  if (overlaps) throw new BookingError("You already have a trip on those dates.", 409);
-  if (bookings.length >= MAX_SAVED_BOOKINGS) throw new BookingError("You have too many bookings saved.", 400);
-
-  return { stay, nights, total: stay.pricePerNight * nights, bookings };
+  return { stay, nights, total: stay.pricePerNight * nights };
 }
 
-/** Starts paying for a trip: a PaymentIntent for the Sanity price, and a CustomerSession for saved cards. */
+/** Which overlap Postgres refused, as the guest should hear it. */
+function overlapError(error: unknown) {
+  const constraint = (error as { constraint?: string } | null)?.constraint;
+  return constraint === "bookings_no_overlapping_trips"
+    ? new BookingError("You already have a trip on those dates.", 409)
+    : new BookingError("Those dates aren't available any more. Pick different dates.", 409);
+}
+
+/** Holds the dates for 15 minutes and starts paying: a PaymentIntent for the Sanity price, plus a CustomerSession for saved cards. */
 export async function startCheckout(userId: string, input: NewBooking): Promise<CheckoutSession> {
-  const { stay, total } = await quote(userId, input);
-  const customerId = await ensureCustomer(userId);
-  const intent = await stripeRequest<PaymentIntent>("POST", "payment_intents", {
-    amount: total * 100,
-    currency: "gbp",
-    customer: customerId,
-    allowed_payment_method_types: ["card"],
-    description: `${stay.title}, ${input.checkIn} to ${input.checkOut}`,
-    metadata: { userId, stayId: stay._id, checkIn: input.checkIn, checkOut: input.checkOut, guests: String(input.guests) },
-  });
-  return {
-    paymentIntentId: intent.id,
-    paymentIntentClientSecret: intent.client_secret,
-    customerSessionClientSecret: await customerSession(customerId),
-    customerId,
-    total,
-  };
+  const { stay, nights, total } = await quote(input);
+  const id = crypto.randomUUID();
+  const db = sql();
+  try {
+    // Stale holds for this stay or guest stop blocking first, in the same transaction.
+    await db.transaction([
+      db`UPDATE bookings SET status = 'expired'
+         WHERE status = 'held' AND held_until < now() AND (stay_id = ${stay._id} OR user_id = ${userId})`,
+      db`INSERT INTO bookings (id, user_id, stay_id, slug, title, city, region, image_url, check_in, check_out,
+           nights, guests, price_per_night, total, status, held_until, policy_title)
+         VALUES (${id}, ${userId}, ${stay._id}, ${stay.slug}, ${stay.title}, ${stay.place.city}, ${stay.place.region},
+           ${stay.imageUrl}, ${input.checkIn}, ${input.checkOut}, ${nights}, ${input.guests}, ${stay.pricePerNight},
+           ${total}, 'held', now() + make_interval(mins => ${HOLD_MINUTES}), ${stay.policyTitle})`,
+    ]);
+  } catch (error) {
+    if (isOverlap(error)) throw overlapError(error);
+    throw error;
+  }
+
+  try {
+    const customerId = await ensureCustomer(userId);
+    const intent = await stripeRequest<PaymentIntent>("POST", "payment_intents", {
+      amount: total * 100,
+      currency: "gbp",
+      customer: customerId,
+      allowed_payment_method_types: ["card"],
+      description: `${stay.title}, ${input.checkIn} to ${input.checkOut}`,
+      metadata: { userId, bookingId: id, stayId: stay._id, checkIn: input.checkIn, checkOut: input.checkOut, guests: String(input.guests) },
+    });
+    await db`UPDATE bookings SET payment_intent_id = ${intent.id} WHERE id = ${id} AND user_id = ${userId}`;
+    return {
+      bookingId: id,
+      paymentIntentId: intent.id,
+      paymentIntentClientSecret: intent.client_secret,
+      customerSessionClientSecret: await customerSession(customerId),
+      customerId,
+      total,
+    };
+  } catch (error) {
+    // Couldn't start paying: free the dates now rather than in 15 minutes.
+    await db`DELETE FROM bookings WHERE id = ${id} AND user_id = ${userId} AND status = 'held'`;
+    throw error;
+  }
+}
+
+/** Frees a hold the guest walked away from (sheet closed without paying). */
+export async function releaseHold(userId: string, id: string) {
+  await sql()`UPDATE bookings SET status = 'expired' WHERE id = ${id} AND user_id = ${userId} AND status = 'held'`;
 }
 
 export function parsePaymentIntentId(body: unknown): string {
@@ -127,80 +206,61 @@ export function parsePaymentIntentId(body: unknown): string {
   return id;
 }
 
-/** Saves a trip once Stripe says its payment succeeded. The same payment never books twice. */
+/** Confirms the held trip once Stripe says its payment succeeded. The same payment never books twice. */
 export async function createPaidBooking(userId: string, paymentIntentId: string): Promise<Booking> {
   const intent = await stripeRequest<PaymentIntent>("GET", `payment_intents/${paymentIntentId}`);
   if (intent.metadata.userId !== userId) throw new BookingError("We couldn't find that payment.", 404);
   if (intent.status !== "succeeded") throw new BookingError("Your payment hasn't gone through yet.", 402);
 
-  const existing = (await listBookings(userId)).find((b) => b.paymentIntentId === intent.id);
-  if (existing) return existing;
+  const row = await findRow(userId, intent.metadata.bookingId ?? "");
+  if (!row || row.payment_intent_id !== intent.id) throw new BookingError("We couldn't find that payment.", 404);
+  if (row.status === "confirmed" || row.status === "cancelled") return toBooking(row);
 
-  const input: NewBooking = {
-    stayId: intent.metadata.stayId,
-    checkIn: intent.metadata.checkIn,
-    checkOut: intent.metadata.checkOut,
-    guests: Number(intent.metadata.guests),
+  // Paid but can't be booked any more: give the money back.
+  const refundAndFail = async (message: string, status: number) => {
+    await stripeRequest("POST", "refunds", { payment_intent: intent.id }, `refund-unbooked-${intent.id}`);
+    throw new BookingError(`${message} You haven't been charged.`, status);
   };
-  let quoted: Awaited<ReturnType<typeof quote>>;
-  try {
-    quoted = await quote(userId, input);
-    if (quoted.total * 100 !== intent.amount || intent.currency !== "gbp") {
-      throw new BookingError("The price changed while you were paying.", 409);
-    }
-  } catch (error) {
-    // Paid but can't be booked any more: give the money back.
-    if (error instanceof BookingError) {
-      await stripeRequest("POST", "refunds", { payment_intent: intent.id }, `refund-unbooked-${intent.id}`);
-      throw new BookingError(`${error.message} You haven't been charged.`, error.status);
-    }
-    throw error;
+  if (intent.amount !== row.total * 100 || intent.currency !== "gbp") {
+    return refundAndFail("The price changed while you were paying.", 409);
   }
 
-  const { stay, nights, total, bookings } = quoted;
-  const booking: Booking = {
-    id: crypto.randomUUID(),
-    stayId: stay._id,
-    slug: stay.slug,
-    title: stay.title,
-    place: stay.place,
-    imageUrl: stay.imageUrl,
-    checkIn: input.checkIn,
-    checkOut: input.checkOut,
-    nights,
-    guests: input.guests,
-    pricePerNight: stay.pricePerNight,
-    total,
-    status: "confirmed",
-    createdAt: new Date().toISOString(),
-    paymentIntentId: intent.id,
-    amountPaid: intent.amount / 100,
-    policyTitle: stay.policyTitle ?? undefined,
-  };
-  await saveBookings(userId, sortByCheckIn([...bookings, booking]));
-  return booking;
+  try {
+    // From held, or from an expired hold if nobody has taken the dates since.
+    await sql()`
+      UPDATE bookings SET status = 'confirmed', held_until = NULL, amount_paid = ${intent.amount / 100}
+      WHERE id = ${row.id} AND user_id = ${userId} AND status IN ('held', 'expired')`;
+  } catch (error) {
+    if (isOverlap(error)) return refundAndFail(overlapError(error).message, 409);
+    throw error;
+  }
+  const confirmed = await findRow(userId, row.id);
+  if (!confirmed) throw new BookingError("We couldn't find that trip.", 404);
+  return toBooking(confirmed);
 }
 
 /** Cancels an upcoming trip and refunds what its tier allows. */
 export async function cancelBooking(userId: string, id: string): Promise<Booking> {
-  const bookings = await listBookings(userId);
-  const booking = bookings.find((b) => b.id === id);
-  if (!booking) throw new BookingError("We couldn't find that trip.", 404);
-  if (booking.status !== "confirmed" || booking.checkOut < toIso(new Date())) {
+  const row = await findRow(userId, id);
+  if (!row || (row.status !== "confirmed" && row.status !== "cancelled")) {
+    throw new BookingError("We couldn't find that trip.", 404);
+  }
+  if (row.status !== "confirmed" || row.check_out < toIso(new Date())) {
     throw new BookingError("Only upcoming trips can be cancelled.", 400);
   }
 
-  let refunded: number | undefined;
-  if (booking.paymentIntentId && booking.amountPaid) {
-    const pence = refundFor(tierOf(booking.policyTitle), booking.amountPaid * 100, booking.pricePerNight * 100, booking.checkIn);
+  let refunded: number | null = null;
+  if (row.payment_intent_id && row.amount_paid) {
+    const pence = refundFor(tierOf(row.policy_title), row.amount_paid * 100, row.price_per_night * 100, row.check_in);
     if (pence > 0) {
-      await stripeRequest("POST", "refunds", { payment_intent: booking.paymentIntentId, amount: pence }, `refund-${booking.id}`);
+      await stripeRequest("POST", "refunds", { payment_intent: row.payment_intent_id, amount: pence }, `refund-${row.id}`);
     }
     refunded = pence / 100;
   }
-  const cancelled: Booking = { ...booking, status: "cancelled", refunded };
-  await saveBookings(userId, bookings.map((b) => (b.id === id ? cancelled : b)));
-  return cancelled;
+  await sql()`UPDATE bookings SET status = 'cancelled', refunded = ${refunded} WHERE id = ${id} AND user_id = ${userId}`;
+  const cancelled = await findRow(userId, id);
+  if (!cancelled) throw new BookingError("We couldn't find that trip.", 404);
+  return toBooking(cancelled);
 }
 
 export function bookingErrorResponse(error: unknown, action: string) {

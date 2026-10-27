@@ -36,7 +36,7 @@
         {
           "backgroundColor": "#2962FF",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "imageWidth": 200
         }
       ],
       "expo-status-bar",

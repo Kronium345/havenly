@@ -16,6 +16,8 @@ type Bookings = {
   checkout: (input: NewBooking) => Promise<CheckoutSession>;
   /** Saves the trip once its payment has succeeded. */
   confirmPaid: (paymentIntentId: string) => Promise<Booking>;
+  /** Frees the dates held at checkout when the guest doesn't pay. Never throws. */
+  release: (bookingId: string) => void;
   cancel: (id: string) => Promise<Booking>;
 };
 
@@ -43,6 +45,14 @@ export function BookingsProvider({ children }: { children: ReactNode }) {
       apiFetch<CheckoutSession>("/api/bookings/checkout", { method: "POST", body: JSON.stringify(input) }),
     [apiFetch],
   );
+  const release = useCallback(
+    (bookingId: string) => {
+      apiFetch(`/api/bookings/${encodeURIComponent(bookingId)}/release`, { method: "POST" }).catch(() => {
+        // The hold expires on its own after 15 minutes.
+      });
+    },
+    [apiFetch],
+  );
   const confirmPaid = useCallback(
     async (paymentIntentId: string) =>
       remember(await apiFetch<Booking>("/api/bookings", { method: "POST", body: JSON.stringify({ paymentIntentId }) })),
@@ -55,8 +65,8 @@ export function BookingsProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo<Bookings>(
-    () => ({ status: loaded.status, bookings, error: loaded.error, retry: loaded.retry, checkout, confirmPaid, cancel }),
-    [loaded.status, bookings, loaded.error, loaded.retry, checkout, confirmPaid, cancel],
+    () => ({ status: loaded.status, bookings, error: loaded.error, retry: loaded.retry, checkout, confirmPaid, release, cancel }),
+    [loaded.status, bookings, loaded.error, loaded.retry, checkout, confirmPaid, release, cancel],
   );
   return <BookingsContext.Provider value={value}>{children}</BookingsContext.Provider>;
 }

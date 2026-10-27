@@ -145,3 +145,4 @@ Steps 1–5 are built. tsc and lint pass. Status stays `approved` until the Stri
   - **Fix:** Stripe's plugin option `disableSPM: true` (`["@stripe/stripe-react-native", { "enableGooglePay": false, "disableSPM": true }]`) writes `$StripeDisableSPM = true` into the Podfile, so Stripe iOS 26.13.0 comes from CocoaPods instead. Stripe marks this deprecated.
   - `expo-build-properties` was removed again (from `package.json` and the lockfile with `--package-lock-only`, because the disk was full).
   - Not yet confirmed by a new iOS build.
+- **iOS:** the user confirmed booking with payment works on the new iOS dev build (2026-10-27). The Android build and the remaining phone checks (saved cards, refunds in the app) are still to do.

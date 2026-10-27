@@ -32,6 +32,8 @@ export type NewBooking = { stayId: string; checkIn: IsoDate; checkOut: IsoDate; 
 
 /** What `/api/bookings/checkout` returns for Stripe's PaymentSheet. */
 export type CheckoutSession = {
+  /** The held booking; release it if the guest doesn't pay. */
+  bookingId: string;
   paymentIntentId: string;
   paymentIntentClientSecret: string;
   customerSessionClientSecret: string;
@@ -41,7 +43,6 @@ export type CheckoutSession = {
 };
 
 export const MAX_NIGHTS = 30;
-export const MAX_SAVED_BOOKINGS = 40;
 
 /** Upcoming: confirmed and not yet checked out. Everything else is past. */
 export function isUpcoming(booking: Booking, todayIso: IsoDate) {
