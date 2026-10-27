@@ -21,7 +21,10 @@ export async function requireSession(request: Request): Promise<{ userId: string
   try {
     const payload = await verifyToken(token, { secretKey });
     return payload.sub ? { userId: payload.sub } : unauthorized();
-  } catch {
+  } catch (error) {
+    // Clerk's reason code only (e.g. "token-expired"), never the token.
+    const reason = (error as { reason?: string } | null)?.reason ?? (error instanceof Error ? error.name : "error");
+    console.warn("Session check failed:", reason);
     return unauthorized();
   }
 }

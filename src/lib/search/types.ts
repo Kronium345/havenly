@@ -35,6 +35,8 @@ export type SearchResponse = {
   understood: UnderstoodChip[];
   count: number;
   results: StayCard[];
+  /** Who read the sentence: Jev, or the code parser (a fallback, or chips/filters sent back). */
+  readBy: "jev" | "code";
 };
 
 export type PolicyText = { _id: string; title: string; topic: string; summary: string; body: string };

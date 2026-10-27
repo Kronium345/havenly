@@ -90,7 +90,8 @@ export function FilterSheet({
               key={type}
               label={typeLabels[type]}
               selected={draft.types?.includes(type) ?? false}
-              onPress={() => set({ types: toggle(draft.types, type) })}
+              // Choosing a type the guest ruled out lifts that exclusion.
+              onPress={() => set({ types: toggle(draft.types, type), notTypes: draft.notTypes?.filter((t) => t !== type) })}
             />
           ))}
         </Group>
@@ -101,7 +102,9 @@ export function FilterSheet({
               key={key}
               label={amenityLabels[key]}
               selected={draft.amenities?.includes(key) ?? false}
-              onPress={() => set({ amenities: toggle(draft.amenities, key) })}
+              onPress={() =>
+                set({ amenities: toggle(draft.amenities, key), notAmenities: draft.notAmenities?.filter((a) => a !== key) })
+              }
             />
           ))}
         </Group>

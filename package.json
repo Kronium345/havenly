@@ -3,9 +3,11 @@
   "version": "1.0.0",
   "main": "expo-router/entry",
   "dependencies": {
+    "@ai-sdk/typesafe-ai": "3.0.28",
     "@clerk/backend": "^3.26.2",
     "@clerk/expo": "^4.14.0",
     "@expo/ui": "~58.0.22",
+    "ai": "7.0.154",
     "expo": "~58.0.17",
     "expo-application": "~58.1.2",
     "expo-auth-session": "~58.0.14",

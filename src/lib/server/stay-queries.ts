@@ -1,6 +1,7 @@
 import type { ParsedQuery } from "../search/parse-query";
 import type { SearchSort, StayCard, StayDetails } from "../search/types";
 
+import { contextQuery } from "./context";
 import { sanityQuery } from "./sanity";
 
 // GROQ for stays. Filters are built only from keys that are present, and every value
@@ -55,11 +56,20 @@ export function buildSearch(parsed: ParsedQuery, sort: SearchSort) {
     conditions.push("maxGuests >= $guests");
     params.guests = filters.guests;
   }
-  if (filters.pets) conditions.push("petsAllowed == true");
+  if (filters.pets === true) conditions.push("petsAllowed == true");
+  if (filters.pets === false) conditions.push("petsAllowed != true");
   if (filters.amenities?.length) {
     conditions.push("count(amenities[@ in $amenities]) == $amenityCount");
     params.amenities = filters.amenities;
     params.amenityCount = filters.amenities.length;
+  }
+  if (filters.notTypes?.length) {
+    conditions.push("!(propertyType in $notTypes)");
+    params.notTypes = filters.notTypes;
+  }
+  if (filters.notAmenities?.length) {
+    conditions.push("count(coalesce(amenities, [])[@ in $notAmenities]) == 0");
+    params.notAmenities = filters.notAmenities;
   }
   if (filters.region) {
     conditions.push("place.region == $region");
@@ -89,10 +99,18 @@ export function buildSearch(parsed: ParsedQuery, sort: SearchSort) {
   return { query, params };
 }
 
-export function searchStays(parsed: ParsedQuery, sort: SearchSort) {
+/** Runs through the havenly-search Context endpoint, falling back to Sanity directly. */
+export async function searchStays(parsed: ParsedQuery, sort: SearchSort) {
   const { query, params } = buildSearch(parsed, sort);
-  return sanityQuery<{ count: number; results: StayCard[] }>(query, params);
+  try {
+    return await contextQuery<SearchResult>(query, params);
+  } catch (error) {
+    console.warn("Context query failed, used direct:", error instanceof Error ? error.message : error);
+    return sanityQuery<SearchResult>(query, params);
+  }
 }
+
+type SearchResult = { count: number; results: StayCard[] };
 
 export function allStays() {
   return sanityQuery<StayCard[]>(

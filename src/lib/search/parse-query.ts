@@ -20,8 +20,12 @@ export type SearchFilters = {
   minPrice?: number;
   maxPrice?: number;
   guests?: number;
+  /** true: must allow pets. false: pet-free stays only. */
   pets?: boolean;
   amenities?: AmenityKey[];
+  /** Types and amenities the guest wants to avoid. */
+  notTypes?: PropertyType[];
+  notAmenities?: AmenityKey[];
   /** US state code, e.g. "CA". */
   region?: string;
   /** A city that exists in the stays, as stored. */
@@ -36,7 +40,7 @@ export type ParsedQuery = {
   rest: string;
 };
 
-const numberWords: Record<string, number> = {
+export const numberWords: Record<string, number> = {
   one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7,
   eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14,
 };
@@ -47,7 +51,7 @@ const MONEY = `(\\d{2,5})`;
 const CURRENCY_WORDS = `(?:\\s*(?:pounds|gbp|quid|dollars|usd|bucks))`;
 const PER_NIGHT = /\b(?:a|per|each|\/)\s*night\b|\/\s*night\b|\bnightly\b/g;
 
-const typeWords: [RegExp, PropertyType[]][] = [
+export const typeWords: [RegExp, PropertyType[]][] = [
   [/\ba[- ]?frames?\b/, ["a-frame"]],
   [/\bcabins?\b/, ["cabin", "a-frame"]],
   [/\bcottages?\b/, ["cottage"]],
@@ -62,7 +66,7 @@ const categoryWords: [RegExp, Category][] = [
 ];
 
 // Longest phrases first so "hot tub" wins over a stray "tub".
-const amenityWords: [RegExp, AmenityKey][] = [
+export const amenityWords: [RegExp, AmenityKey][] = [
   [/\b(?:hot ?tubs?|jacuzzis?|spa)\b/, "hotTub"],
   [/\b(?:swimming )?pools?\b/, "pool"],
   [/\b(?:wi-?fi|internet)\b/, "wifi"],
@@ -78,6 +82,12 @@ const amenityWords: [RegExp, AmenityKey][] = [
   [/\bev ?charg(?:er|ing)\b/, "evCharger"],
   [/\b(?:beachfront|beach access|on the beach)\b/, "beachAccess"],
 ];
+
+export const PET_WORDS = /\b(?:pet[- ]?friendly|pets? allowed|pets?|dogs?|cats?|puppy|puppies)\b/g;
+
+/** Matches a soft word as typed ("cosier" counts as cozy). */
+export const softWordPattern = (word: SoftWord) =>
+  word === "cozy" ? /\bcos(?:y|ier)\b|\bcoz(?:y|ier)\b/g : new RegExp(`\\b${word}\\b`, "g");
 
 const stopWords = new Set(
   (
@@ -146,7 +156,7 @@ export function parseQuery(input: string, { cities = [] }: ParseOptions = {}): P
   if (guestCount) filters.guests = toNumber(guestCount[1]);
 
   // Pets: only ever a "must allow pets" filter, never "no pets".
-  if (take(/\b(?:pet[- ]?friendly|pets? allowed|pets?|dogs?|cats?|puppy|puppies)\b/g)) filters.pets = true;
+  if (take(PET_WORDS)) filters.pets = true;
 
   // Amenities.
   // "no wifi", "without a pool" or "don't need parking" is not a requirement: drop those words.
@@ -192,8 +202,7 @@ export function parseQuery(input: string, { cities = [] }: ParseOptions = {}): P
   // Soft words rank only.
   const soft: SoftWord[] = [];
   for (const word of softWords) {
-    const pattern = word === "cozy" ? /\bcos(?:y|ier)\b|\bcoz(?:y|ier)\b/g : new RegExp(`\\b${word}\\b`, "g");
-    if (take(pattern) && !soft.includes(word)) soft.push(word);
+    if (take(softWordPattern(word)) && !soft.includes(word)) soft.push(word);
   }
 
   const rest = text
@@ -220,8 +229,12 @@ export function sanitizeParsedQuery(value: unknown): ParsedQuery | null {
     minPrice: whole(raw.minPrice, 0, 100000),
     maxPrice: whole(raw.maxPrice, 0, 100000),
     guests: whole(raw.guests, 1, 50),
-    pets: raw.pets === true ? true : undefined,
+    pets: typeof raw.pets === "boolean" ? raw.pets : undefined,
     amenities: Array.isArray(raw.amenities) ? raw.amenities.filter((a) => amenityKeys.includes(a)) : undefined,
+    notTypes: Array.isArray(raw.notTypes) ? raw.notTypes.filter((t) => propertyTypes.includes(t)) : undefined,
+    notAmenities: Array.isArray(raw.notAmenities)
+      ? raw.notAmenities.filter((a) => amenityKeys.includes(a))
+      : undefined,
     region: typeof raw.region === "string" && /^[A-Z]{2}$/.test(raw.region) ? raw.region : undefined,
     city: text(raw.city, 60),
   };

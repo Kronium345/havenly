@@ -26,9 +26,18 @@ export function understoodChips({ filters, soft, nights }: ParsedQuery): Underst
     chips.push({ key: "price", label });
   }
   if (filters.guests) chips.push({ key: "guests", label: plural(filters.guests, "guest") });
-  if (filters.pets) chips.push({ key: "pets", label: "Pet Friendly" });
+  if (filters.pets === true) chips.push({ key: "pets", label: "Pet Friendly" });
+  if (filters.pets === false) chips.push({ key: "pets", label: "Pet-free" });
   for (const amenity of filters.amenities ?? []) {
     chips.push({ key: `amenity:${amenity}`, label: amenityLabels[amenity] });
+  }
+  for (const type of filters.notTypes ?? []) {
+    // "cabin" also excludes A-frames; one chip stands for both.
+    if (type === "a-frame" && filters.notTypes?.includes("cabin")) continue;
+    chips.push({ key: `notType:${type}`, label: `No ${typeLabels[type]}` });
+  }
+  for (const amenity of filters.notAmenities ?? []) {
+    chips.push({ key: `notAmenity:${amenity}`, label: `No ${amenityLabels[amenity]}` });
   }
   if (filters.city) chips.push({ key: "city", label: filters.city });
   if (filters.region) chips.push({ key: "region", label: regionName(filters.region) });
@@ -54,6 +63,14 @@ export function withoutChip(parsed: ParsedQuery, key: string): ParsedQuery {
   else if (key.startsWith("amenity:")) {
     filters.amenities = filters.amenities?.filter((a) => `amenity:${a}` !== key);
     if (!filters.amenities?.length) delete filters.amenities;
+  } else if (key.startsWith("notType:")) {
+    const type = key.slice("notType:".length);
+    const removed = type === "cabin" ? ["cabin", "a-frame"] : [type];
+    filters.notTypes = filters.notTypes?.filter((t) => !removed.includes(t));
+    if (!filters.notTypes?.length) delete filters.notTypes;
+  } else if (key.startsWith("notAmenity:")) {
+    filters.notAmenities = filters.notAmenities?.filter((a) => `notAmenity:${a}` !== key);
+    if (!filters.notAmenities?.length) delete filters.notAmenities;
   } else if (key.startsWith("soft:")) soft = soft.filter((w) => `soft:${w}` !== key);
   return { ...parsed, filters, soft, nights };
 }

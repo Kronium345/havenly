@@ -1,5 +1,5 @@
 import { useAuth } from "@clerk/expo";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { toast } from "@/components/ui/toast";
 
@@ -17,10 +17,16 @@ export class ApiError extends Error {
 
 export function useApiFetch() {
   const { getToken, signOut } = useAuth();
+  // Clerk can hand back new functions on any render. Reading them from a ref keeps
+  // apiFetch stable, so effects that depend on it don't refetch after every response.
+  const auth = useRef({ getToken, signOut });
+  useLayoutEffect(() => {
+    auth.current = { getToken, signOut };
+  }, [getToken, signOut]);
 
   return useCallback(
     async <T,>(path: string, init: RequestInit = {}): Promise<T> => {
-      const token = await getToken();
+      const token = await auth.current.getToken();
       const response = await fetch(path, {
         ...init,
         headers: {
@@ -32,14 +38,14 @@ export function useApiFetch() {
       const body = (await response.json().catch(() => null)) as (T & { error?: string }) | null;
       if (response.status === 401) {
         toast.error("Your session ended.", "Sign in again.");
-        await signOut();
+        await auth.current.signOut();
       }
       if (!response.ok || body === null) {
         throw new ApiError(body?.error ?? "Something went wrong. Try again.", response.status);
       }
       return body;
     },
-    [getToken, signOut],
+    [],
   );
 }
 
