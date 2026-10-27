@@ -85,3 +85,9 @@ Run the script on `dev` and report counts. Clerk copies stay until the user appr
 - **Who owns what:** add "Data: Neon Postgres for bookings".
 - **Rules:** `DATABASE_URL` joins the secret list. Every booking query filters by the session user.
 - **Commands:** `node --env-file=.env.local scripts/db-migrate.mjs`.
+
+## Result (in progress)
+Steps 1–4 are built and checked on the server. Status stays `approved` until the phone checks pass on the new dev build.
+- **Neon project:** `havenly` (`falling-fog-34644371`, AWS London), created through the Neon MCP plugin. Branch `main` is for production; `dev` (`br-delicate-queen-zaoj1rpg`) is in `.env.local`. Migration `001_bookings.sql` is applied on `dev`, with both exclusion constraints present.
+- **Script test** (real `bookings.ts` via jiti, Neon `dev`, Stripe sandbox, two throwaway Clerk users, all cleaned up): every check passed. Same stay and dates for a second guest → 409; same guest, second stay, same nights → 409; an expired hold stops blocking; payment confirms (£825) and repeating returns the same trip; holds aren't listed; release frees the dates at once; cancel refunds by tier (Flexible: £825 of £825); a late payment for dates taken meanwhile → 409 plus a full refund.
+- **Migration:** 1 Clerk booking found, 1 copied, 0 refused (Spanish Villa with Pool, 2026-10-28 → 31, £1,950, Strict). Clerk copies are left in place until the user approves deleting them.

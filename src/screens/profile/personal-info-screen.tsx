@@ -19,6 +19,10 @@ import { reportClerkError, type ClerkFailure } from "@/screens/auth/clerk-errors
 import { reportInvalid } from "@/screens/auth/report-invalid";
 import { color, tw } from "@/theme";
 
+import { ChangePasswordSheet } from "./change-password-sheet";
+import { DeleteAccountSheet } from "./delete-account-sheet";
+import { SessionsSection } from "./sessions-section";
+
 const MAX_NAME_LENGTH = 50;
 
 type Field = "firstName" | "lastName";
@@ -35,7 +39,8 @@ function validateNames(firstName: string, lastName: string): Partial<Record<Fiel
   };
 }
 
-// Photo and names live in Clerk. The screen edits copies and writes them back on save.
+// Account: photo and names (Clerk; the screen edits copies and writes them back on
+// save), password, signed-in devices and account deletion.
 export function PersonalInfoScreen() {
   const router = useRouter();
   const posthog = usePostHog();
@@ -46,6 +51,7 @@ export function PersonalInfoScreen() {
   const [errors, setErrors] = useState<Partial<Record<Field, string>>>({});
   const [photoBusy, setPhotoBusy] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [sheet, setSheet] = useState<"password" | "delete" | null>(null);
 
   const goBack = () => (router.canGoBack() ? router.back() : router.navigate("/profile"));
   const email = user?.primaryEmailAddress?.emailAddress;
@@ -108,7 +114,7 @@ export function PersonalInfoScreen() {
       >
         <IconButton icon={ChevronLeft} accessibilityLabel="Back" variant="outline" size="md" onPress={goBack} />
         <AppText variant="hero" accessibilityRole="header" style={tw`mt-7`}>
-          Personal info
+          Account
         </AppText>
 
         <View style={tw`mt-7 items-center gap-3`}>
@@ -165,13 +171,37 @@ export function PersonalInfoScreen() {
             <View style={tw`gap-0.5 px-1`}>
               <AppText variant="caption">Email</AppText>
               <AppText variant="callout">{email}</AppText>
-              <AppText variant="caption">Email can&apos;t be changed here yet.</AppText>
             </View>
           ) : null}
         </View>
 
         <Button title="Save" loading={saving} disabled={!changed} onPress={save} style={tw`mt-8`} />
+
+        <View style={tw`mt-10 gap-3`}>
+          <AppText variant="headline">Password</AppText>
+          {user?.passwordEnabled ? (
+            <Button title="Change password" variant="secondary" onPress={() => setSheet("password")} />
+          ) : (
+            <AppText variant="caption">You sign in with Google or Apple, so there&apos;s no Havenly password to change.</AppText>
+          )}
+        </View>
+
+        <View style={tw`mt-10`}>
+          <SessionsSection />
+        </View>
+
+        <View style={tw`mt-10 gap-2 border-t border-border pt-6`}>
+          <Pressable accessibilityRole="button" hitSlop={8} onPress={() => setSheet("delete")} style={tw`self-start`}>
+            <AppText variant="callout" style={tw`font-semibold text-danger`}>
+              Delete account
+            </AppText>
+          </Pressable>
+          <AppText variant="caption">Permanently removes your trips, saved stays, saved cards and profile.</AppText>
+        </View>
       </ScrollView>
+
+      <ChangePasswordSheet visible={sheet === "password"} onClose={() => setSheet(null)} />
+      <DeleteAccountSheet visible={sheet === "delete"} onClose={() => setSheet(null)} />
     </View>
   );
 }

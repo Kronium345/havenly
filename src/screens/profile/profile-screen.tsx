@@ -69,7 +69,7 @@ export function ProfileScreen() {
 
         <View style={tw`rounded-xl bg-canvas p-1 pt-4`}>
           <ProfileRowGroup title="Account" style={tw`px-2`}>
-            <ProfileRow icon={User} label="Personal info" onPress={() => router.push("/personal-info")} />
+            <ProfileRow icon={User} label="Account" onPress={() => router.push("/personal-info")} />
             <ProfileRow icon={CreditCard} label="Payment methods" onPress={() => router.push("/payment-methods")} />
             <ProfileRow icon={Luggage} label="Trips" onPress={() => router.navigate("/trips")} />
           </ProfileRowGroup>
