@@ -1,6 +1,7 @@
 import { MAX_NIGHTS, type Booking, type CheckoutSession, type NewBooking } from "../bookings-shared";
 import { addDays, isIsoDate, nightsBetween, toIso } from "../dates";
 
+import { HOST_ORG_ID, hostOrgParams } from "./clerk-mode";
 import { isOverlap, sql } from "./db";
 import { refundFor, tierOf } from "./refunds";
 import { sanityQuery } from "./sanity";
@@ -132,8 +133,8 @@ async function quote(input: NewBooking) {
   if (nights > MAX_NIGHTS) throw new BookingError(`Trips can be up to ${MAX_NIGHTS} nights.`, 400);
 
   const stay = await sanityQuery<QuotedStay | null>(
-    `*[_type == "property" && _id == $id][0]{_id, "slug": slug.current, title, "place": place{city, region}, "imageUrl": images[0].asset->url, pricePerNight, maxGuests, "policyTitle": cancellationPolicy->title, "hostOrgId": host->clerkOrgId}`,
-    { id: input.stayId },
+    `*[_type == "property" && _id == $id][0]{_id, "slug": slug.current, title, "place": place{city, region}, "imageUrl": images[0].asset->url, pricePerNight, maxGuests, "policyTitle": cancellationPolicy->title, "hostOrgId": ${HOST_ORG_ID}}`,
+    { id: input.stayId, ...hostOrgParams() },
   );
   if (!stay) throw new BookingError("This stay isn't available anymore.", 404);
   if (input.guests < 1 || input.guests > stay.maxGuests) {

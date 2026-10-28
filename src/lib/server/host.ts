@@ -4,12 +4,14 @@ import { addDays, toIso } from "../dates";
 import type { HostBooking, HostStayDetails, HostSummary } from "../host-shared";
 import type { StayCard } from "../search/types";
 
+import { HOST_ORG_ID, hostOrgParams } from "./clerk-mode";
 import { sql } from "./db";
 import { sanityQuery } from "./sanity";
 import { CARD_FIELDS } from "./stay-queries";
 
 // Server only. Host mode (prompts/19): everything is scoped to the organization from the
-// verified session, never one sent by the app. Stays come from Sanity by host->clerkOrgId;
+// verified session, never one sent by the app. Stays come from Sanity by the host's
+// organization for this Clerk instance (`HOST_ORG_ID`, prompts/21);
 // bookings from Neon by host_org_id. Holds and expired rows are never shown, and guests
 // appear as first name + last initial.
 
@@ -75,8 +77,8 @@ async function toHostBookings(rows: Row[]): Promise<HostBooking[]> {
 
 export function hostStays(orgId: string) {
   return sanityQuery<StayCard[]>(
-    `*[_type == "property" && defined(slug.current) && host->clerkOrgId == $orgId] | order(title asc)${CARD_FIELDS}`,
-    { orgId },
+    `*[_type == "property" && defined(slug.current) && ${HOST_ORG_ID} == $orgId] | order(title asc)${CARD_FIELDS}`,
+    { orgId, ...hostOrgParams() },
   );
 }
 
@@ -85,7 +87,7 @@ export async function hostSummary(orgId: string, role: HostSummary["role"]): Pro
   const horizon = addDays(today, 30);
   const [org, stays, counts] = await Promise.all([
     clerk().organizations.getOrganization({ organizationId: orgId }),
-    sanityQuery<number>(`count(*[_type == "property" && host->clerkOrgId == $orgId])`, { orgId }),
+    sanityQuery<number>(`count(*[_type == "property" && ${HOST_ORG_ID} == $orgId])`, { orgId, ...hostOrgParams() }),
     sql()`
       SELECT
         count(*) FILTER (WHERE check_out >= ${today}::date)::int AS upcoming,
@@ -115,8 +117,8 @@ export async function hostBookings(orgId: string, when: "upcoming" | "past", sta
 
 export async function hostStay(orgId: string, stayId: string): Promise<HostStayDetails> {
   const stay = await sanityQuery<StayCard | null>(
-    `*[_type == "property" && _id == $stayId && host->clerkOrgId == $orgId][0]${CARD_FIELDS}`,
-    { orgId, stayId },
+    `*[_type == "property" && _id == $stayId && ${HOST_ORG_ID} == $orgId][0]${CARD_FIELDS}`,
+    { orgId, stayId, ...hostOrgParams() },
   );
   if (!stay) throw new HostError("We couldn't find that stay.", 404);
   const bookings = await hostBookings(orgId, "upcoming", stayId);

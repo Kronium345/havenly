@@ -23,10 +23,17 @@ export const host = defineType({
     defineField({name: 'bio', type: 'text', rows: 3}),
     defineField({
       name: 'clerkOrgId',
-      title: 'Hosting account',
+      title: 'Hosting account (dev)',
       type: 'string',
       readOnly: true,
-      description: 'Clerk organization for this host company. Set by scripts/invite-host.mjs; not edited here.',
+      description: 'Clerk development organization for this host company. Set by scripts/invite-host.mjs; not edited here.',
+    }),
+    defineField({
+      name: 'clerkOrgIdLive',
+      title: 'Hosting account (production)',
+      type: 'string',
+      readOnly: true,
+      description: 'Clerk production organization. Set by scripts/invite-host.mjs --production; not edited here.',
     }),
   ],
   preview: {
