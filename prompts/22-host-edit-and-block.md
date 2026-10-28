@@ -1,6 +1,6 @@
 # 22 · Hosts edit stays and block dates (host mode phase 2)
 
-Status: approved
+Status: done
 
 ## Goal
 A host company's owner can change a stay's practical details (price, guests, house rules, check-in and check-out times, pets, amenities, highlights) and block nights the stay can't be booked, from host mode in the app. Changes show to guests straight away.
@@ -88,7 +88,7 @@ The user adds `SANITY_HOST_WRITE_TOKEN` to EAS production (sensitive) and the mi
 - **Hosting:** phase 2 edits (allowed fields, owner-only, `ifRevisionID`) and blocks (`bookings.status = 'blocked'`, `user_id` `block:<uuid>`, same exclusion constraint).
 - **Content:** host edits patch the published stay; rerun `write-stay-copy.ts` after highlights change.
 
-## Result (done in dev; production deploy pending)
+## Result
 - Built:
   - `db/migrations/003_blocks.sql` (applied to Neon `dev`);
   - `src/lib/server/host.ts` (`hostBlocks`, `createBlock`, `removeBlock`; `hostStay` returns `blocks`);
@@ -106,6 +106,9 @@ The user adds `SANITY_HOST_WRITE_TOKEN` to EAS production (sensitive) and the mi
   - real save (price +£1, a new rule) visible in published data straight away; a stale revision refused (409); originals restored;
   - phone (Argent, dev build): device names read "Havenly app on Android"; as Lena owner, blocked 29–31 Oct (lime nights, Blocked list), removed it; edited guests 8→9 and price £560→£561 from the app (toast, header reloads to £561); values restored to £560 / 8.
   - Fixed while testing: rule and highlight fields now wrap (Android showed only the end of long text), and the stay screen reloads when returning from Edit details.
-- Pending:
-  - production: token in EAS (sensitive), migration 003 on Neon `main`, `deploy-prod.ps1`.
+- Production (2026-10-28):
+  - `SANITY_HOST_WRITE_TOKEN` in EAS production (sensitive), added by the user with `host-token-eas.mjs`;
+  - migration 003 applied to Neon `main` through the Neon MCP in one transaction, recorded in `schema_migrations`; its constraints match `dev`;
+  - redeployed: all six new host routes on https://havenly.expo.app answer 401 without a session (an unknown route answers 404).
+- Not checked: a signed-in edit and block on production, which needs a production build and a production host owner (the user, invited to Lena with `invite-host.mjs --production`).
 - `.expo/types/router.d.ts` was patched by hand for the new route because the dev server ran out of memory; the next `npx expo start` regenerates it.
