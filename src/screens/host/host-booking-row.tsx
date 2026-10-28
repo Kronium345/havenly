@@ -3,8 +3,8 @@ import { View } from "react-native";
 
 import { Badge } from "@/components/ui/badge";
 import { AppText } from "@/components/ui/text";
-import { dateRange } from "@/lib/dates";
-import { formatPrice, plural, sanityImage } from "@/lib/format";
+import { dateRange, shortDate } from "@/lib/dates";
+import { formatPence, formatPrice, plural, sanityImage } from "@/lib/format";
 import type { HostBooking } from "@/lib/host-shared";
 import { tw } from "@/theme";
 
@@ -41,7 +41,29 @@ export function HostBookingRow({ booking, showStay = true }: { booking: HostBook
           </AppText>
           {cancelled ? <Badge variant="discount" label="Cancelled" /> : null}
         </View>
+        {payoutLine(booking.payout) ? (
+          <AppText variant="caption" style={tw`text-ink`}>
+            {payoutLine(booking.payout)}
+          </AppText>
+        ) : null}
       </View>
     </View>
   );
+}
+
+/** "You get £491.30 · paid out 29 Oct" and so on (prompts/23). */
+function payoutLine({ state, sharePence, dueOn }: HostBooking["payout"]) {
+  const share = formatPence(sharePence);
+  switch (state) {
+    case "setup_needed":
+      return `Set up payouts to receive ${share}`;
+    case "waiting":
+      return `You get ${share}${dueOn ? ` · paid out ${shortDate(dueOn)}` : ""}`;
+    case "paid":
+      return `Paid ${share}${dueOn ? ` · ${shortDate(dueOn)}` : ""}`;
+    case "delayed":
+      return `${share} payout delayed · we're retrying`;
+    default:
+      return null;
+  }
 }

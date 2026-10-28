@@ -27,6 +27,16 @@ export type HostBooking = {
   /** Whole pounds. */
   total: number;
   status: "confirmed" | "cancelled";
+  /** The host's 85% (prompts/23): waiting for payout setup, waiting in their balance, or paid. */
+  payout: HostPayout;
+};
+
+export type HostPayout = {
+  state: "none" | "setup_needed" | "waiting" | "paid" | "delayed";
+  /** The host's share in pence. */
+  sharePence: number;
+  /** UK date the payout is (or was) due. */
+  dueOn: IsoDate | null;
 };
 
 /** Nights a host blocked (prompts/22): no guest can book them. */

@@ -6,6 +6,7 @@ import {
   MAX_BLOCK_NOTE,
   type HostBlock,
   type HostBooking,
+  type HostPayout,
   type HostStayDetails,
   type HostSummary,
 } from "../host-shared";
@@ -49,7 +50,24 @@ type Row = {
   guests: number;
   total: number;
   status: "confirmed" | "cancelled";
+  transfer_status: "none" | "awaiting_host" | "sent" | "failed";
+  payout_status: "none" | "pending" | "paid" | "failed";
+  host_share_pence: number | null;
+  payout_due_on: string | null;
 };
+
+/** The host side of a booking (prompts/23), as the host bookings list shows it. */
+function payoutOf(row: Row): HostPayout {
+  const sharePence = row.host_share_pence ?? 0;
+  const state: HostPayout["state"] =
+    sharePence === 0 ? "none"
+    : row.payout_status === "paid" ? "paid"
+    : row.transfer_status === "awaiting_host" ? "setup_needed"
+    : row.transfer_status === "failed" || row.payout_status === "failed" ? "delayed"
+    : row.transfer_status === "sent" ? "waiting"
+    : "none";
+  return { state, sharePence, dueOn: row.payout_due_on };
+}
 
 /** "Daniel A." for each guest, looked up in one Clerk call. */
 async function guestNames(userIds: string[]) {
@@ -79,6 +97,7 @@ async function toHostBookings(rows: Row[]): Promise<HostBooking[]> {
     guests: row.guests,
     total: row.total,
     status: row.status,
+    payout: payoutOf(row),
   }));
 }
 
@@ -110,7 +129,8 @@ export async function hostBookings(orgId: string, when: "upcoming" | "past", sta
   const today = toIso(new Date());
   const rows = (await sql()`
     SELECT id, user_id, stay_id, title, image_url, check_in::text AS check_in, check_out::text AS check_out,
-      nights, guests, total, status
+      nights, guests, total, status, transfer_status, payout_status, host_share_pence,
+      (payout_due_at AT TIME ZONE 'Europe/London')::date::text AS payout_due_on
     FROM bookings
     WHERE host_org_id = ${orgId} AND status IN ('confirmed', 'cancelled')
       AND (${stayId}::text IS NULL OR stay_id = ${stayId})

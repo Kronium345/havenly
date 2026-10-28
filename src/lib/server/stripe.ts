@@ -42,11 +42,13 @@ function customerField() {
   return process.env.STRIPE_SECRET_KEY?.includes("_live_") ? "stripeLiveCustomerId" : "stripeCustomerId";
 }
 
+/** `stripeAccount` makes the call as a connected account (host payouts, prompts/23). */
 export async function stripeRequest<T>(
   method: "GET" | "POST" | "DELETE",
   path: string,
   params: Params = {},
   idempotencyKey?: string,
+  stripeAccount?: string,
 ): Promise<T> {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new StripeError("Payments aren't set up yet.", 503);
@@ -57,6 +59,7 @@ export async function stripeRequest<T>(
       Authorization: `Bearer ${key}`,
       "Content-Type": "application/x-www-form-urlencoded",
       ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
+      ...(stripeAccount ? { "Stripe-Account": stripeAccount } : {}),
     },
     body: method === "GET" ? undefined : query,
     signal: AbortSignal.timeout(15000),
@@ -116,4 +119,6 @@ export type PaymentIntent = {
   currency: string;
   client_secret: string;
   metadata: Record<string, string>;
+  /** The charge's id once paid; transfers to hosts reference it (`source_transaction`). */
+  latest_charge?: string | null;
 };

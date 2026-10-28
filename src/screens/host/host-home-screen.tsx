@@ -1,5 +1,6 @@
+import { useAuth } from "@clerk/expo";
 import { useRouter } from "expo-router";
-import { CalendarCheck, Home, Users } from "lucide-react-native";
+import { CalendarCheck, Home, Landmark, Users } from "lucide-react-native";
 import { View } from "react-native";
 
 import { StayListMessage } from "@/components/stay-list-states";
@@ -16,6 +17,7 @@ import { useHosting } from "./use-hosting";
 // Host mode home (prompts/19): the company at a glance and the way into each section.
 export function HostHomeScreen() {
   const router = useRouter();
+  const { orgRole } = useAuth();
   const { leave } = useHosting();
   const summary = useApiQuery<HostSummary>("/api/host/summary");
 
@@ -43,6 +45,7 @@ export function HostHomeScreen() {
           <ProfileRow icon={Home} label="Stays" onPress={() => router.push("/host/stays")} />
           <ProfileRow icon={CalendarCheck} label="Bookings" onPress={() => router.push("/host/bookings")} />
           <ProfileRow icon={Users} label="Team" onPress={() => router.push("/host/team")} />
+          {orgRole === "org:admin" ? <ProfileRow icon={Landmark} label="Payouts" onPress={() => router.push("/host/payouts")} /> : null}
         </ProfileRowGroup>
       </View>
 

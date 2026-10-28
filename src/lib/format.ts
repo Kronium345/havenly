@@ -5,6 +5,13 @@ export function formatPrice(pounds: number) {
   return `£${Math.round(pounds).toLocaleString("en-GB")}`;
 }
 
+/** Pence → "£491.30" (host payouts, prompts/23); whole pounds drop the ".00". */
+export function formatPence(pence: number) {
+  const pounds = Math.floor(pence / 100);
+  const rest = pence % 100;
+  return `£${pounds.toLocaleString("en-GB")}${rest ? `.${String(rest).padStart(2, "0")}` : ""}`;
+}
+
 /** { city: "Lake Arrowhead", region: "CA" } → "Lake Arrowhead, CA". */
 export function formatPlace(place: { city: string; region: string }) {
   return `${place.city}, ${place.region}`;

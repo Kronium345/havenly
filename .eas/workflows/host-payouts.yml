@@ -1,0 +1,21 @@
+# Daily host payouts (prompts/23): sends catch-up transfers to hosts who finished payout
+# setup and pays out bookings whose payout is due (from 10:00 UK the day after check-in).
+# The job is idempotent, so a delayed or repeated run is harmless. Schedules run in GMT,
+# only from the default branch, and need a paid EAS plan; run it by hand with
+# `npx eas-cli@latest workflow:run .eas/workflows/host-payouts.yml`.
+name: Host payouts
+
+on:
+  schedule:
+    - cron: '15 10 * * *' # 10:15 GMT every day (11:15 UK in summer)
+
+jobs:
+  pay_hosts:
+    name: Pay out hosts
+    environment: production # provides JOB_SECRET
+    steps:
+      - name: Run the payout job
+        run: |
+          curl --fail-with-body --silent --show-error --max-time 120 \
+            -X POST https://havenly.expo.app/api/jobs/host-payouts \
+            -H "Authorization: Bearer $JOB_SECRET"

@@ -3,6 +3,7 @@ import { addDays, isIsoDate, nightsBetween, toIso } from "../dates";
 
 import { HOST_ORG_ID, hostOrgParams } from "./clerk-mode";
 import { isOverlap, sql } from "./db";
+import { beforeRefund, onBookingPaid } from "./host-payouts";
 import { refundFor, tierOf } from "./refunds";
 import { sanityQuery } from "./sanity";
 import { customerSession, ensureCustomer, stripeRequest, StripeError, type PaymentIntent } from "./stripe";
@@ -217,7 +218,11 @@ export async function createPaidBooking(userId: string, paymentIntentId: string)
 
   const row = await findRow(userId, intent.metadata.bookingId ?? "");
   if (!row || row.payment_intent_id !== intent.id) throw new BookingError("We couldn't find that payment.", 404);
-  if (row.status === "confirmed" || row.status === "cancelled") return toBooking(row);
+  if (row.status === "confirmed" || row.status === "cancelled") {
+    // Already confirmed by the other path (app or webhook); finish the host's side if it didn't run.
+    if (row.status === "confirmed") await onBookingPaid(row.id, intent.latest_charge ?? null);
+    return toBooking(row);
+  }
 
   // Paid but can't be booked any more: give the money back.
   const refundAndFail = async (message: string, status: number) => {
@@ -237,6 +242,8 @@ export async function createPaidBooking(userId: string, paymentIntentId: string)
     if (isOverlap(error)) return refundAndFail(overlapError(error).message, 409);
     throw error;
   }
+  // The host's 85% moves to their Stripe balance now, or waits until they set up payouts.
+  await onBookingPaid(row.id, intent.latest_charge ?? null);
   const confirmed = await findRow(userId, row.id);
   if (!confirmed) throw new BookingError("We couldn't find that trip.", 404);
   return toBooking(confirmed);
@@ -256,6 +263,8 @@ export async function cancelBooking(userId: string, id: string): Promise<Booking
   if (row.payment_intent_id && row.amount_paid) {
     const pence = refundFor(tierOf(row.policy_title), row.amount_paid * 100, row.price_per_night * 100, row.check_in);
     if (pence > 0) {
+      // Take the host's part of the refund back from their balance first (prompts/23).
+      await beforeRefund(row.id, pence / 100);
       await stripeRequest("POST", "refunds", { payment_intent: row.payment_intent_id, amount: pence }, `refund-${row.id}`);
     }
     refunded = pence / 100;
