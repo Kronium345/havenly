@@ -1,11 +1,18 @@
 import { createClerkClient } from "@clerk/backend";
 
-import { addDays, toIso } from "../dates";
-import type { HostBooking, HostStayDetails, HostSummary } from "../host-shared";
+import { addDays, isIsoDate, nightsBetween, toIso } from "../dates";
+import {
+  MAX_BLOCK_NIGHTS,
+  MAX_BLOCK_NOTE,
+  type HostBlock,
+  type HostBooking,
+  type HostStayDetails,
+  type HostSummary,
+} from "../host-shared";
 import type { StayCard } from "../search/types";
 
 import { HOST_ORG_ID, hostOrgParams } from "./clerk-mode";
-import { sql } from "./db";
+import { isOverlap, sql } from "./db";
 import { sanityQuery } from "./sanity";
 import { CARD_FIELDS } from "./stay-queries";
 
@@ -121,11 +128,66 @@ export async function hostStay(orgId: string, stayId: string): Promise<HostStayD
     { orgId, stayId, ...hostOrgParams() },
   );
   if (!stay) throw new HostError("We couldn't find that stay.", 404);
-  const bookings = await hostBookings(orgId, "upcoming", stayId);
+  const [bookings, blocks] = await Promise.all([hostBookings(orgId, "upcoming", stayId), hostBlocks(orgId, stayId)]);
   const booked = bookings
     .filter((booking) => booking.status === "confirmed")
     .map(({ checkIn, checkOut }) => ({ checkIn, checkOut }));
-  return { stay, booked, bookings };
+  return { stay, booked, blocks, bookings };
+}
+
+/** The company's blocks on one stay, from today on. */
+export async function hostBlocks(orgId: string, stayId: string): Promise<HostBlock[]> {
+  const today = toIso(new Date());
+  const rows = (await sql()`
+    SELECT id, check_in::text AS check_in, check_out::text AS check_out, nights, note
+    FROM bookings
+    WHERE host_org_id = ${orgId} AND stay_id = ${stayId} AND status = 'blocked' AND check_out > ${today}::date
+    ORDER BY check_in`) as { id: string; check_in: string; check_out: string; nights: number; note: string | null }[];
+  return rows.map((row) => ({ id: row.id, checkIn: row.check_in, checkOut: row.check_out, nights: row.nights, note: row.note }));
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Blocks nights on a stay the company hosts. A bookings row with status 'blocked' (prompts/22), so the overlap constraint covers it. */
+export async function createBlock(orgId: string, userId: string, stayId: string, body: unknown): Promise<HostBlock> {
+  const input = (body ?? {}) as { checkIn?: unknown; checkOut?: unknown; note?: unknown };
+  if (!isIsoDate(input.checkIn) || !isIsoDate(input.checkOut)) throw new HostError("Pick the nights to block.", 400);
+  const { checkIn, checkOut } = input;
+  if (checkIn < toIso(new Date())) throw new HostError("You can't block nights in the past.", 400);
+  const nights = nightsBetween(checkIn, checkOut);
+  if (nights < 1) throw new HostError("The last night must be after the first.", 400);
+  if (nights > MAX_BLOCK_NIGHTS) throw new HostError(`Block up to ${MAX_BLOCK_NIGHTS} nights at a time.`, 400);
+  const note = typeof input.note === "string" ? input.note.trim() : "";
+  if (note.length > MAX_BLOCK_NOTE) throw new HostError(`Keep the note under ${MAX_BLOCK_NOTE} characters.`, 400);
+
+  const stay = await sanityQuery<StayCard | null>(
+    `*[_type == "property" && _id == $stayId && ${HOST_ORG_ID} == $orgId][0]${CARD_FIELDS}`,
+    { orgId, stayId, ...hostOrgParams() },
+  );
+  if (!stay) throw new HostError("We couldn't find that stay.", 404);
+
+  const id = crypto.randomUUID();
+  try {
+    await sql()`
+      INSERT INTO bookings (id, user_id, stay_id, slug, title, city, region, image_url, check_in, check_out,
+        nights, guests, price_per_night, total, status, host_org_id, blocked_by, note)
+      VALUES (${id}, ${`block:${id}`}, ${stay._id}, ${stay.slug}, ${stay.title}, ${stay.place.city}, ${stay.place.region},
+        ${stay.imageUrl}, ${checkIn}, ${checkOut}, ${nights}, 1, 0, 0, 'blocked', ${orgId}, ${userId}, ${note || null})`;
+  } catch (error) {
+    if (isOverlap(error)) throw new HostError("Some of those nights are already booked or blocked.", 409);
+    throw error;
+  }
+  return { id, checkIn, checkOut, nights, note: note || null };
+}
+
+/** Removes one of the company's blocks. */
+export async function removeBlock(orgId: string, stayId: string, blockId: string) {
+  if (!UUID.test(blockId)) throw new HostError("We couldn't find that block.", 404);
+  const rows = await sql()`
+    DELETE FROM bookings
+    WHERE id = ${blockId}::uuid AND stay_id = ${stayId} AND host_org_id = ${orgId} AND status = 'blocked'
+    RETURNING id`;
+  if (rows.length === 0) throw new HostError("We couldn't find that block.", 404);
 }
 
 export function hostErrorResponse(error: unknown, action: string) {

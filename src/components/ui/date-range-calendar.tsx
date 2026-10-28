@@ -12,15 +12,18 @@ export type DateRange = { checkIn?: IsoDate; checkOut?: IsoDate };
 
 /**
  * Month calendar for picking check-in and check-out. First tap sets check-in, the next
- * later day sets check-out; tapping on or before check-in starts again. Past days are off.
+ * later day sets check-out; tapping on or before check-in starts again. Past days are off,
+ * and so are days `isUnavailable` returns true for (shown struck through).
  */
 export function DateRangeCalendar({
   value,
   onChange,
+  isUnavailable,
   style,
 }: {
   value: DateRange;
   onChange: (range: DateRange) => void;
+  isUnavailable?: (day: IsoDate) => boolean;
   style?: StyleProp<ViewStyle>;
 }) {
   const firstDay = today();
@@ -70,16 +73,18 @@ export function DateRangeCalendar({
         {monthGrid(month.year, month.index).map((day, i) => {
           if (!day) return <View key={`pad-${i}`} style={tw`w-[14.2857%] h-11`} />;
           const past = day < firstDay;
+          const unavailable = !past && !!isUnavailable?.(day);
+          const off = past || unavailable;
           const isEnd = day === value.checkIn || day === value.checkOut;
           const inRange = !!value.checkIn && !!value.checkOut && day > value.checkIn && day < value.checkOut;
-          const role = day === value.checkIn ? ", check-in" : day === value.checkOut ? ", check-out" : "";
+          const role = day === value.checkIn ? ", check-in" : day === value.checkOut ? ", check-out" : unavailable ? ", unavailable" : "";
           return (
             <View key={day} style={tw.style("w-[14.2857%] h-11 py-0.5", inRange && "bg-primary-tint")}>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`${longDate(day)}${role}`}
-                accessibilityState={{ disabled: past, selected: isEnd }}
-                disabled={past}
+                accessibilityState={{ disabled: off, selected: isEnd }}
+                disabled={off}
                 onPress={() => pick(day)}
                 style={({ pressed }) => [
                   tw.style("flex-1 items-center justify-center rounded-full", isEnd && "bg-primary"),
@@ -88,7 +93,11 @@ export function DateRangeCalendar({
               >
                 <AppText
                   variant="callout"
-                  style={tw.style(isEnd ? "text-on-primary" : past ? "text-placeholder" : "text-ink", isEnd ? "font-bold" : "font-medium")}
+                  style={tw.style(
+                    isEnd ? "text-on-primary" : off ? "text-placeholder" : "text-ink",
+                    isEnd ? "font-bold" : "font-medium",
+                    unavailable && "line-through",
+                  )}
                 >
                   {Number(day.slice(8))}
                 </AppText>

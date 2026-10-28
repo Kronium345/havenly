@@ -15,9 +15,20 @@ import { tw } from "@/theme";
 
 type Session = Awaited<ReturnType<NonNullable<ReturnType<typeof useUser>["user"]>["getSessions"]>>[number];
 
+// Native apps report their HTTP client as the "browser" (OkHttp on Android, CFNetwork or
+// Darwin on iOS, or the app's own name), so those sessions are shown as the app instead.
+const APP_CLIENT = /^(okhttp|dalvik|cfnetwork|darwin|havenly|expo)/i;
+const ANDROID_CLIENT = /^(okhttp|dalvik)/i;
+const IOS_CLIENT = /^(cfnetwork|darwin)/i;
+
 const deviceName = (session: Session) => {
   const a = session.latestActivity;
-  return [a?.browserName, a?.deviceType].filter(Boolean).join(" on ") || "Unknown device";
+  const browser = a?.browserName ?? "";
+  if (APP_CLIENT.test(browser)) {
+    const platform = a?.deviceType || (ANDROID_CLIENT.test(browser) ? "Android" : IOS_CLIENT.test(browser) ? "iPhone" : "");
+    return platform ? `Havenly app on ${platform}` : "Havenly app";
+  }
+  return [browser, a?.deviceType].filter(Boolean).join(" on ") || "Unknown device";
 };
 
 const lastActive = (session: Session) => {
