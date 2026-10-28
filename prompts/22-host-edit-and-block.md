@@ -88,7 +88,7 @@ The user adds `SANITY_HOST_WRITE_TOKEN` to EAS production (sensitive) and the mi
 - **Hosting:** phase 2 edits (allowed fields, owner-only, `ifRevisionID`) and blocks (`bookings.status = 'blocked'`, `user_id` `block:<uuid>`, same exclusion constraint).
 - **Content:** host edits patch the published stay; rerun `write-stay-copy.ts` after highlights change.
 
-## Result (built in dev; token, phone and production steps pending)
+## Result (done in dev; production deploy pending)
 - Built:
   - `db/migrations/003_blocks.sql` (applied to Neon `dev`);
   - `src/lib/server/host.ts` (`hostBlocks`, `createBlock`, `removeBlock`; `hostStay` returns `blocks`);
@@ -102,8 +102,10 @@ The user adds `SANITY_HOST_WRITE_TOKEN` to EAS production (sensitive) and the mi
   - tsc and lint pass;
   - blocks, 15/15 against `dev`: create; overlap with a block and with the confirmed Spanish Villa booking refused (409); guest checkout over a block refused; another company refused (404); 5 invalid inputs refused (400); listed in stay details and not in host Bookings; removal by another company and with a malformed id gets 404; owner removal works. No rows left behind;
   - edit validation, 16/16: owner reads values and revision; another company gets 404; trimming and deduplication; 12 invalid inputs refused (400); a save without the token gets 503 with nothing written.
+- With the token:
+  - real save (price +£1, a new rule) visible in published data straight away; a stale revision refused (409); originals restored;
+  - phone (Argent, dev build): device names read "Havenly app on Android"; as Lena owner, blocked 29–31 Oct (lime nights, Blocked list), removed it; edited guests 8→9 and price £560→£561 from the app (toast, header reloads to £561); values restored to £560 / 8.
+  - Fixed while testing: rule and highlight fields now wrap (Android showed only the end of long text), and the stay screen reloads when returning from Edit details.
 - Pending:
-  - the user creates `SANITY_HOST_WRITE_TOKEN`, then a real save test against `dev` data (with the original values restored);
-  - the phone check with Argent (Metro wasn't running and memory was too low);
   - production: token in EAS (sensitive), migration 003 on Neon `main`, `deploy-prod.ps1`.
 - `.expo/types/router.d.ts` was patched by hand for the new route because the dev server ran out of memory; the next `npx expo start` regenerates it.

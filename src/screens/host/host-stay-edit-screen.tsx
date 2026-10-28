@@ -230,7 +230,11 @@ function LinesEditor({
           <TextField
             value={line}
             placeholder={placeholder}
-            onChangeText={(text) => onChange(lines.map((l, i) => (i === index ? text : l)))}
+            // Wraps long lines (a single-line field on Android shows only the end), but each
+            // entry stays one paragraph: Return closes the keyboard, pasted line breaks become spaces.
+            multiline
+            submitBehavior="blurAndSubmit"
+            onChangeText={(text) => onChange(lines.map((l, i) => (i === index ? text.replace(/\s*\n\s*/g, " ") : l)))}
             accessibilityLabel={`${itemLabel} ${index + 1}`}
             error={error}
             style={tw`flex-1`}

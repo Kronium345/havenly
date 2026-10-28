@@ -1,7 +1,7 @@
 import { useAuth } from "@clerk/expo";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { usePostHog } from "posthog-react-native";
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Pressable, View } from "react-native";
 
 import { StayCardPlaceholders, StayListMessage } from "@/components/stay-list-states";
@@ -27,6 +27,19 @@ export function HostStayScreen() {
   const result = useApiQuery<HostStayDetails>(id ? `/api/host/stays/${encodeURIComponent(id)}` : null);
   const stay = result.status === "ready" ? result.data.stay : null;
   const [blocking, setBlocking] = useState(false);
+
+  // Reload when coming back from Edit details, so a new price shows in the header.
+  const { retry } = result;
+  const firstFocus = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (firstFocus.current) {
+        firstFocus.current = false;
+        return;
+      }
+      retry();
+    }, [retry]),
+  );
 
   return (
     <HostLayout
