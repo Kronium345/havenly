@@ -1,6 +1,6 @@
 # 20 · Production release setup
 
-Status: approved
+Status: done
 
 ## Goal
 A release build of Havenly works without the dev server: the API runs on EAS Hosting, release builds point at it, payments are confirmed by Stripe webhooks even if the guest closes the app, the production database is ready, and the store listing has its privacy and support pages. Clerk production and Stripe go-live are listed as the user's steps; they need a domain and an activated Stripe account.
@@ -104,18 +104,24 @@ Done when tsc passes and the signature script test passes.
 - **Rules:** the webhook is the only route without `requireSession`; its signature is the check.
 - **Design system:** `/design-system` is dev only. Privacy and support pages live at `/privacy` and `/support`.
 
-## Result (in progress, stopped: disk full)
-- Done:
-  - Step 1: `/design-system` redirects in release; camera text; `eas.json` production `environment`. Privacy manifests come from the packages, so no app.json entries are needed.
-  - Step 2: `/privacy` and `/support`, checked on web.
-  - Step 3: webhook route, 9/9 script checks.
-  - Neon `main` migrated (001 and 002 recorded).
-  - Deployed to https://havenly.expo.app; `origin` set in app.json.
-- **Problem found:** EAS Hosting doesn't receive variables with **secret** visibility ("Secrets cannot be deployed with EAS Hosting"); only plaintext and sensitive ones. The server variables were uploaded as `secret`, so both deploys used the values from local `.env.local` instead: Neon **dev**, no `STRIPE_WEBHOOK_SECRET`, and probably `SANITY_WRITE_TOKEN`.
-- To finish:
-  1. Recreate the server variables with `--visibility sensitive`. `--force` didn't change the visibility, so delete and recreate them.
-  2. The sandbox endpoint `we_1UVUbA…` exists but its signing secret wasn't stored. Roll its secret (or recreate the endpoint) and upload it as sensitive.
-  3. `npx expo export -p web` with `.env.local` present (`EXPO_PUBLIC_*`), then move `.env.local` out of the project during `eas deploy --prod --environment production`, and back afterwards.
-  4. Re-run the production end-to-end check (webhook confirms by itself, Neon `main` row) and the smoke test.
-  5. Delete the two earlier deployments in the EAS dashboard, or rotate `SANITY_WRITE_TOKEN`.
-- Sandbox test payment pi_3UVUYs… was refunded (£578).
+## Result
+- Built:
+  - `/design-system` dev only; camera text; `eas.json` production `environment` (privacy manifests come from the packages);
+  - `/privacy` and `/support`;
+  - `POST /api/stripe/webhook` (9/9 script checks);
+  - Neon `main` migrated (001 and 002);
+  - deployed to https://havenly.expo.app, with `origin` in app.json.
+- **Found on the way:** EAS Hosting never receives `secret` variables, and EAS can't turn a secret variable into a sensitive one. Every server variable was deleted and created again as **sensitive**, and deploys run with `.env.local` moved aside so its values (Neon dev) aren't used. New sandbox webhook endpoint `we_1UVViy…`; the old `we_1UVUbA…` is disabled.
+- **Live check, 2026-10-28** (throwaway Clerk test user against https://havenly.expo.app):
+  - stays 200 (24 stays); checkout 200;
+  - the PaymentIntent was paid with `pm_card_visa` through Stripe only, and the **webhook alone** confirmed the booking in 4 s;
+  - the app's own confirm afterwards returned the same booking (still 1 row);
+  - cancel refunded £578;
+  - Stripe shows `payment_intent.succeeded` and `charge.refunded` delivered (`pending_webhooks=0`);
+  - the row was in Neon `main`, not `dev`;
+  - `DELETE /api/account` removed it all (main back to 0 bookings).
+- Phone (Android dev build): host mode, saved stays across a force-close, and a sandbox booking + cancel all work.
+- Also fixed: Android clipped descenders on tight line heights (`AppText`).
+- Left for the user:
+  - delete the two earlier deployments in the EAS dashboard (they ran with `.env.local` values), or rotate `SANITY_WRITE_TOKEN`;
+  - Clerk production and Stripe go-live: live keys into EAS as sensitive, and a live webhook endpoint.
