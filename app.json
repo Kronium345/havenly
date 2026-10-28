@@ -61,7 +61,8 @@
         {
           "color": "#2962FF"
         }
-      ]
+      ],
+      "./plugins/with-gradle-memory-limits"
     ],
     "experiments": {
       "typedRoutes": true,
