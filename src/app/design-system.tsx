@@ -46,6 +46,7 @@ import {
   ArrowRight,
   CalendarCheck,
 } from "lucide-react-native";
+import { Redirect } from "expo-router";
 import { ReactNode, useState } from "react";
 import { ScrollView, View } from "react-native";
 
@@ -120,7 +121,12 @@ function Section({ number, title, children }: { number: string; title: string; c
   );
 }
 
+// Dev only: release builds and the deployed web app send this route home.
 export default function DesignSystemScreen() {
+  return __DEV__ ? <DesignSystemPreview /> : <Redirect href="/" />;
+}
+
+function DesignSystemPreview() {
   const [category, setCategory] = useState("All Stays");
   const [filters, setFilters] = useState<string[]>(["Cabins"]);
   const [view, setView] = useState<"list" | "map">("list");

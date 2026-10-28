@@ -136,6 +136,9 @@ function RootStack() {
         <Stack.Screen name="(app)" options={{ headerShown: false }} />
       </Stack.Protected>
       <Stack.Screen name="design-system" options={{ title: "Design system" }} />
+      {/* Public pages: the store listings link to them (prompts/20). */}
+      <Stack.Screen name="privacy" options={{ headerShown: false }} />
+      <Stack.Screen name="support" options={{ headerShown: false }} />
     </Stack>
   );
 }

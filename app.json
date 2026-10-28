@@ -9,7 +9,8 @@
     "userInterfaceStyle": "light",
     "ios": {
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "Havenly uses the camera to scan your card when you add a payment method."
       },
       "bundleIdentifier": "com.kronium.havenly"
     },
@@ -30,7 +31,12 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router",
+      [
+        "expo-router",
+        {
+          "origin": "https://havenly.expo.app"
+        }
+      ],
       [
         "expo-splash-screen",
         {

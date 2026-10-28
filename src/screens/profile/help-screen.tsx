@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { ChevronLeft, FileText, Mail, MessageSquare, Search } from "lucide-react-native";
+import { ChevronLeft, FileText, Mail, MessageSquare, Search, Shield } from "lucide-react-native";
 import { useState } from "react";
 import { Linking, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -52,6 +52,7 @@ export function HelpScreen() {
           <ProfileRowGroup title="Get help" style={tw`px-2`}>
             <ProfileRow icon={Mail} label="Email Havenly support" onPress={emailSupport} />
             <ProfileRow icon={Search} label="Find a stay" onPress={() => router.navigate("/search")} />
+            <ProfileRow icon={Shield} label="Privacy" onPress={() => router.push("/privacy")} />
           </ProfileRowGroup>
         </View>
 
