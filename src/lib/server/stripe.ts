@@ -2,7 +2,9 @@ import { createClerkClient } from "@clerk/backend";
 
 // Server only. Talks to Stripe's REST API with plain fetch (no SDK), using the secret key.
 // Amounts are always worked out here from Sanity; the app only ever receives client
-// secrets. Each guest has one Stripe Customer, whose id is kept in Clerk private metadata.
+// secrets. Each guest has one Stripe Customer per mode, whose id is kept in Clerk private
+// metadata: dev (sandbox) and production (live) share the same Clerk users, and a sandbox
+// customer doesn't exist in live mode.
 
 export class StripeError extends Error {
   constructor(
@@ -30,8 +32,14 @@ function encode(params: Params, prefix = ""): string[] {
   });
 }
 
+// Secret (`sk_`) or restricted (`rk_`) key.
 export function isStripeConfigured() {
-  return Boolean(process.env.STRIPE_SECRET_KEY?.startsWith("sk_"));
+  return /^(sk|rk)_/.test(process.env.STRIPE_SECRET_KEY ?? "");
+}
+
+/** Clerk private metadata field holding the Customer id for the current key's mode. */
+function customerField() {
+  return process.env.STRIPE_SECRET_KEY?.includes("_live_") ? "stripeLiveCustomerId" : "stripeCustomerId";
 }
 
 export async function stripeRequest<T>(
@@ -69,18 +77,17 @@ function clerk() {
 
 /** The guest's Stripe Customer id, created on first use. */
 export async function ensureCustomer(userId: string): Promise<string> {
-  const user = await clerk().users.getUser(userId);
-  const existing = (user.privateMetadata as { stripeCustomerId?: unknown }).stripeCustomerId;
-  if (typeof existing === "string" && existing.startsWith("cus_")) return existing;
+  const existing = await existingCustomer(userId);
+  if (existing) return existing;
   const customer = await stripeRequest<{ id: string }>("POST", "customers", { metadata: { clerkUserId: userId } }, `customer-${userId}`);
-  await clerk().users.updateUserMetadata(userId, { privateMetadata: { stripeCustomerId: customer.id } });
+  await clerk().users.updateUserMetadata(userId, { privateMetadata: { [customerField()]: customer.id } });
   return customer.id;
 }
 
-/** The Customer id if the guest already has one; never creates it. */
+/** The Customer id if the guest already has one in this mode; never creates it. */
 export async function existingCustomer(userId: string): Promise<string | null> {
   const user = await clerk().users.getUser(userId);
-  const id = (user.privateMetadata as { stripeCustomerId?: unknown }).stripeCustomerId;
+  const id = (user.privateMetadata as Record<string, unknown>)[customerField()];
   return typeof id === "string" && id.startsWith("cus_") ? id : null;
 }
 
