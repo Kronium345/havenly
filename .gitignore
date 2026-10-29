@@ -43,3 +43,6 @@ example
 /ios
 /android
 .env.local
+
+
+store.config.json
