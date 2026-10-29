@@ -69,7 +69,7 @@
         }
       ],
       "./plugins/with-gradle-memory-limits",
-      "./plugins/with-release-lint-off",
+      "./plugins/with-stripe-release-fixes",
       "expo-image",
       "expo-web-browser"
     ],
