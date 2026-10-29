@@ -1,4 +1,5 @@
 import PostHog from "posthog-react-native";
+import { Platform } from "react-native";
 
 type LogAttributes = Record<string, boolean | number | string>;
 
@@ -17,6 +18,9 @@ if (!configured && __DEV__) {
 export const posthog = new PostHog(projectToken || "posthog-disabled", {
   host,
   disabled: !configured,
+  // The React Native SDK has no browser storage: on the web it throws while starting and
+  // the whole site renders blank. Keep its state in memory there; phones keep using files.
+  persistence: Platform.OS === "web" ? "memory" : "file",
   // PostHog rejects a whole batch (400 "missing event name attribute") when one message has
   // no event name, losing every valid event with it. Drop such a message instead, and say
   // what it was in development so its source can be found.
