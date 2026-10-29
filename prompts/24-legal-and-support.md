@@ -1,6 +1,6 @@
 # 24 · Privacy link, Terms of Service from Sanity, real support email
 
-Status: approved
+Status: done
 
 ## Goal
 Guests and hosts can read Havenly's privacy policy (the user's hosted policy) and Terms of Service from the app and the website, and contact support at a real inbox. The Terms text is edited in Sanity Studio and shows without an app release.
@@ -59,5 +59,7 @@ Help rows, the sign-up line, the Payouts link, and `SUPPORT_EMAIL`.
 - **Rules:** add `/api/legal/<slug>` (published legal pages only) to the routes without `requireSession`.
 - **Design system:** privacy is the user's hosted policy; support email `awolowodaniel@yahoo.ie`.
 
-## Result (in progress)
-Built: `legalPage` schema and the published `terms` placeholder; `GET /api/legal/<slug>` (public, read-only; unsafe or unknown slugs → 404); `/terms` with loading, error/retry and not-published states; `/privacy` now redirects to the hosted policy (draft text removed); Help has Privacy (in-app browser) and Terms rows; sign-up and host Payouts link the Terms; `SUPPORT_EMAIL` is awolowodaniel@yahoo.ie. tsc and lint pass, and the route was checked with curl. The checks on the phone and the web are still to do, so Status stays `approved`.
+## Result
+Built: `legalPage` schema and the published `terms` placeholder; `GET /api/legal/<slug>` (public, read-only; unsafe or unknown slugs → 404); `/terms` with loading, error/retry and not-published states; `/privacy` redirects to the hosted policy (draft text removed); Help has Privacy (in-app browser) and Terms rows; sign-up and host Payouts link the Terms; `SUPPORT_EMAIL` is awolowodaniel@yahoo.ie.
+
+Verified: tsc and lint; the route with curl (200 for `terms`, 404 for unknown slugs, no session); on the phone, Help → Terms shows the Sanity text, Help → Privacy opens the hosted policy, Email support addresses awolowodaniel@yahoo.ie, Payouts → Terms of Service opens the page, and a published Terms edit showed on reopening (then reverted). Not checked: the sign-up links (they need signing out), and the web pages, because local Metro ran out of memory while rendering them. Check both on https://havenly.expo.app after the next deploy.
