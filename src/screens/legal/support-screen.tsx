@@ -24,7 +24,7 @@ const sections: LegalSection[] = [
   {
     title: "Your account",
     paragraphs: [
-      "Change your name, photo or password, sign out other devices, or delete your account in Profile → Account.",
+      "Change your name, photo or password, sign out other devices, or delete your account in Profile → Account. Without the app, see /delete-account.",
     ],
   },
   {

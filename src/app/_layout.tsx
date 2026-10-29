@@ -140,6 +140,7 @@ function RootStack() {
       <Stack.Screen name="privacy" options={{ headerShown: false }} />
       <Stack.Screen name="support" options={{ headerShown: false }} />
       <Stack.Screen name="terms" options={{ headerShown: false }} />
+      <Stack.Screen name="delete-account" options={{ headerShown: false }} />
     </Stack>
   );
 }
