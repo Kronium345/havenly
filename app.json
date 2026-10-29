@@ -69,6 +69,7 @@
         }
       ],
       "./plugins/with-gradle-memory-limits",
+      "./plugins/with-release-lint-off",
       "expo-image",
       "expo-web-browser"
     ],
