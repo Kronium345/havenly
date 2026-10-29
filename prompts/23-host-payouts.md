@@ -1,6 +1,6 @@
 # 23 · Host payouts with Stripe Connect (host mode phase 3)
 
-Status: approved
+Status: done
 
 ## Goal
 Host companies are paid their share of each stay automatically. An owner sets up payouts once (Stripe-hosted onboarding). When a guest pays, 85% moves to the host's Stripe balance, where it waits; about a day after check-in Havenly pays it out to the host's bank. Hosts see what's waiting and what's been paid.
@@ -110,7 +110,7 @@ Checked on the phone with Argent.
 
   All test accounts were closed.
 
-## Result (built and verified in the sandbox; phone and production pending)
+## Result
 - Built:
   - `db/migrations/004_payouts.sql` (applied to `dev`; amounts in pence);
   - `src/lib/server/connect.ts` (v2 accounts, manual payouts on creation, Account Links, Express login links, transfer, reversal, balance, payout);
@@ -130,4 +130,14 @@ Checked on the phone with Argent.
   - host bookings show paid, none and waiting states;
   - the due time is 10:00 UK the day after check-in (10:00 UTC in winter, 09:00 UTC in summer), or 85 days after the transfer when that's sooner (seen on a check-in 150 days away).
   - Test bookings and the test guest were removed. Lena's sandbox host account stays onboarded for the phone check; its balance may show test reversals.
-- Not done yet: the phone check (Metro wasn't running); production (migration 004 on `main`, `JOB_SECRET` in EAS, Connect platform setup on the live account, redeploy; EAS Workflows schedules need a paid plan and a linked GitHub repository).
+- Phone (dev build, Argent):
+  - Lena owner: the Payouts row shows, status Active, and "Open Stripe dashboard" opens Lena's Express dashboard (test mode);
+  - a guest booking of Palm Villa (£450, saved test card) transferred 38,250p at once, with the payout due 2026-11-18 10:00 UK;
+  - host Bookings shows "You get £382.50 · paid out Wed 18 Nov";
+  - cancelling in the app refunded £450 and reversed the host's share to 0 (payout none).
+- Production (2026-10-29):
+  - the live Stripe account is a Connect platform (the user ran the questionnaire);
+  - `JOB_SECRET` is in EAS (sensitive);
+  - migration 004 is on Neon `main` through the Neon MCP (recorded; 8 columns and the index match);
+  - redeployed: `/api/host/payouts` and `/link` answer 401 without a session; `/api/jobs/host-payouts` answers 401 with no secret or a wrong one; `/host-payouts/return` and `/refresh` serve the hand-back page.
+- Not checked: a live host onboarding and a real paid-out booking (needs a production build and a real host), and a scheduled run (needs a paid EAS plan and a linked GitHub repository; `npx eas-cli@latest workflow:run .eas/workflows/host-payouts.yml` runs it by hand).
