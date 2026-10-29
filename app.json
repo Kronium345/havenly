@@ -68,7 +68,9 @@
           "color": "#2962FF"
         }
       ],
-      "./plugins/with-gradle-memory-limits"
+      "./plugins/with-gradle-memory-limits",
+      "expo-image",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
