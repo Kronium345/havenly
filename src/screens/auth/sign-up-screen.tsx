@@ -5,10 +5,13 @@ import { ComponentRef, useRef, useState } from "react";
 import { TextInput, View } from "react-native";
 
 import { Button } from "@/components/ui/button";
+import { AppText } from "@/components/ui/text";
 import { TextField } from "@/components/ui/text-field";
 import { toast } from "@/components/ui/toast";
 import { splitFullName } from "@/lib/display-name";
 import { tw } from "@/theme";
+
+import { openPrivacyPolicy } from "@/screens/legal/open-legal";
 
 import { AuthLayout } from "./auth-layout";
 import { clerkFieldErrors, reportClerkError } from "./clerk-errors";
@@ -146,6 +149,17 @@ export function SignUpScreen() {
         onPress={submit}
         style={tw`mt-6`}
       />
+      <AppText variant="caption" style={tw`mt-3 text-center`}>
+        By signing up you agree to the{" "}
+        <AppText variant="caption" accessibilityRole="link" style={tw`font-medium underline`} onPress={() => router.push("/terms")}>
+          Terms of Service
+        </AppText>{" "}
+        and{" "}
+        <AppText variant="caption" accessibilityRole="link" style={tw`font-medium underline`} onPress={openPrivacyPolicy}>
+          Privacy Policy
+        </AppText>
+        .
+      </AppText>
     </AuthLayout>
   );
 }

@@ -1,4 +1,4 @@
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { usePostHog } from "posthog-react-native";
 import { useCallback, useRef, useState } from "react";
@@ -37,6 +37,7 @@ const copy: Record<PayoutStatus, { title: string; body: string; action: string }
 
 /** Owners set up and check payouts (prompts/23). Stripe hosts onboarding and the dashboard. */
 export function HostPayoutsScreen() {
+  const router = useRouter();
   const apiFetch = useApiFetch();
   const posthog = usePostHog();
   const result = useApiQuery<{ status: PayoutStatus }>("/api/host/payouts");
@@ -93,6 +94,13 @@ export function HostPayoutsScreen() {
           ) : null}
           <AppText variant="caption">
             Stripe holds your bank details and identity checks; Havenly never sees them. Payouts usually reach your bank 1–2 working days after they&apos;re sent.
+          </AppText>
+          <AppText variant="caption">
+            Hosting on Havenly follows our{" "}
+            <AppText variant="caption" accessibilityRole="link" style={tw`font-medium underline`} onPress={() => router.push("/terms")}>
+              Terms of Service
+            </AppText>
+            .
           </AppText>
         </View>
       )}

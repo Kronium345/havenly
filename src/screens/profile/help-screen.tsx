@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { ChevronLeft, FileText, Mail, MessageSquare, Search, Shield } from "lucide-react-native";
+import { ChevronLeft, FileText, Mail, MessageSquare, ScrollText, Search, Shield } from "lucide-react-native";
 import { useState } from "react";
 import { Linking, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -13,10 +13,11 @@ import { AppText } from "@/components/ui/text";
 import { toast } from "@/components/ui/toast";
 import { tw } from "@/theme";
 
+import { openPrivacyPolicy } from "@/screens/legal/open-legal";
+
 import { CancellationPoliciesSheet } from "./cancellation-policies-sheet";
 
-// Placeholder until Havenly has a real support inbox (AGENTS: marked placeholder).
-export const SUPPORT_EMAIL = "support@havenly.app";
+export const SUPPORT_EMAIL = "awolowodaniel@yahoo.ie";
 
 export function HelpScreen() {
   const router = useRouter();
@@ -52,7 +53,8 @@ export function HelpScreen() {
           <ProfileRowGroup title="Get help" style={tw`px-2`}>
             <ProfileRow icon={Mail} label="Email Havenly support" onPress={emailSupport} />
             <ProfileRow icon={Search} label="Find a stay" onPress={() => router.navigate("/search")} />
-            <ProfileRow icon={Shield} label="Privacy" onPress={() => router.push("/privacy")} />
+            <ProfileRow icon={Shield} label="Privacy" onPress={openPrivacyPolicy} />
+            <ProfileRow icon={ScrollText} label="Terms of Service" onPress={() => router.push("/terms")} />
           </ProfileRowGroup>
         </View>
 

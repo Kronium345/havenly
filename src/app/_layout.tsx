@@ -139,6 +139,7 @@ function RootStack() {
       {/* Public pages: the store listings link to them (prompts/20). */}
       <Stack.Screen name="privacy" options={{ headerShown: false }} />
       <Stack.Screen name="support" options={{ headerShown: false }} />
+      <Stack.Screen name="terms" options={{ headerShown: false }} />
     </Stack>
   );
 }

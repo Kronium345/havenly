@@ -11,7 +11,7 @@ import { tw } from "@/theme";
 
 export type LegalSection = { title: string; paragraphs: string[] };
 
-/** A public text page (privacy, support): back button, title, intro and sections. */
+/** A public text page (terms, support): back button, title, intro and sections. */
 export function LegalPage({
   title,
   updated,
@@ -21,7 +21,7 @@ export function LegalPage({
 }: {
   title: string;
   updated?: string;
-  intro: string;
+  intro?: string;
   sections: LegalSection[];
   children?: ReactNode;
 }) {
@@ -48,9 +48,11 @@ export function LegalPage({
             Last updated {updated}
           </AppText>
         ) : null}
-        <AppText variant="body" style={tw`mt-4 text-ink`}>
-          {intro}
-        </AppText>
+        {intro ? (
+          <AppText variant="body" style={tw`mt-4 text-ink`}>
+            {intro}
+          </AppText>
+        ) : null}
 
         {children}
 

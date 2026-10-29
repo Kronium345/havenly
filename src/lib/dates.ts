@@ -39,6 +39,12 @@ export function shortDate(value: IsoDate) {
   return `${WEEKDAYS[date.getDay()].slice(0, 3)} ${date.getDate()} ${MONTHS[date.getMonth()].slice(0, 3)}`;
 }
 
+/** "29 October 2026" (legal pages). */
+export function fullDate(value: IsoDate) {
+  const date = fromIso(value);
+  return `${date.getDate()} ${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
+}
+
 /** "Friday 14 November" */
 export function longDate(value: IsoDate) {
   const date = fromIso(value);

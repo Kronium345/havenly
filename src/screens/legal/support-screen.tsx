@@ -28,8 +28,10 @@ const sections: LegalSection[] = [
     ],
   },
   {
-    title: "Privacy",
-    paragraphs: ["How Havenly uses your data is explained on our privacy page at /privacy."],
+    title: "Privacy and terms",
+    paragraphs: [
+      "How Havenly uses your data is explained in our privacy policy at /privacy. The rules for using Havenly are in our Terms of Service at /terms.",
+    ],
   },
 ];
 
