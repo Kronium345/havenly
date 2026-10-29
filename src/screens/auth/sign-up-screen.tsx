@@ -57,12 +57,11 @@ export function SignUpScreen() {
     }
 
     const { firstName, lastName } = splitFullName(values.name);
-    const { error } = await signUp.password({
-      emailAddress: values.email.trim(),
-      password: values.password,
-      firstName,
-      lastName,
-    });
+    const params = { emailAddress: values.email.trim(), password: values.password, firstName, lastName };
+    // password() updates the client's current sign-up when one exists. One left over from an
+    // earlier attempt (a finished Google sign-up, or one that expired) is gone on Clerk's side,
+    // so updating it fails with "No sign up attempt was found". create() always starts a new one.
+    const { error } = signUp.id ? await signUp.create(params) : await signUp.password(params);
     if (error) {
       const fieldErrors = clerkFieldErrors(error, fieldForParam);
       setErrors(fieldErrors);
